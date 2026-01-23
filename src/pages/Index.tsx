@@ -9,16 +9,20 @@ import { BudgetTracker } from '@/components/BudgetTracker';
 import { PriceComparison } from '@/components/PriceComparison';
 import { UserProfile } from '@/components/UserProfile';
 import { InventoryTracker } from '@/components/InventoryTracker';
+import { CheckoutModal } from '@/components/CheckoutModal';
+import { QuickAddProduct } from '@/components/QuickAddProduct';
+import { PurchaseHistoryCard } from '@/components/PurchaseHistory';
 import { useGroceryStore } from '@/hooks/useGroceryStore';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useInventory } from '@/hooks/useInventory';
 import { useOfflineStatus } from '@/hooks/useOfflineStatus';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 
 const Index = () => {
   const [showProfile, setShowProfile] = useState(false);
+  const [showCheckout, setShowCheckout] = useState(false);
   const { isOnline } = useOfflineStatus();
   
   const {
@@ -44,6 +48,7 @@ const Index = () => {
   const {
     inventory,
     lowStockAlerts,
+    purchaseHistory,
     checkDuplicate: checkInventoryDuplicate,
     recordPurchase,
     useFromInventory,
@@ -77,6 +82,16 @@ const Index = () => {
     }
     
     clearChecked();
+    setShowCheckout(false);
+  };
+
+  const handleOpenCheckout = () => {
+    const checkedItems = getCheckedItems();
+    if (checkedItems.length === 0) {
+      toast.error('Please select items to purchase');
+      return;
+    }
+    setShowCheckout(true);
   };
 
   const handleAddLowStockToList = (item: any) => {
@@ -142,6 +157,9 @@ const Index = () => {
         {/* Stats Overview */}
         <StatsCards stats={stats} />
 
+        {/* Quick Add Products */}
+        <QuickAddProduct products={[]} onAdd={addItem} />
+
         {/* Main Content Grid */}
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Left Column - Main List */}
@@ -156,7 +174,7 @@ const Index = () => {
               onToggle={toggleItem}
               onRemove={removeItem}
               onUpdateQuantity={updateQuantity}
-              onClearChecked={handleClearChecked}
+              onClearChecked={handleOpenCheckout}
               progress={stats.progress}
             />
           </div>
@@ -164,7 +182,7 @@ const Index = () => {
           {/* Right Column - Sidebar */}
           <div className="space-y-6">
             <Tabs defaultValue="budget" className="w-full">
-              <TabsList className="w-full grid grid-cols-2">
+              <TabsList className="w-full grid grid-cols-3">
                 <TabsTrigger value="budget">Budget</TabsTrigger>
                 <TabsTrigger value="inventory">
                   Inventory
@@ -174,6 +192,7 @@ const Index = () => {
                     </span>
                   )}
                 </TabsTrigger>
+                <TabsTrigger value="history">History</TabsTrigger>
               </TabsList>
               <TabsContent value="budget" className="mt-4">
                 <BudgetTracker budget={budget} currentSpend={stats.totalPrice} />
@@ -188,6 +207,9 @@ const Index = () => {
                   onAddToShoppingList={handleAddLowStockToList}
                 />
               </TabsContent>
+              <TabsContent value="history" className="mt-4">
+                <PurchaseHistoryCard purchases={purchaseHistory} />
+              </TabsContent>
             </Tabs>
             
             <SmartSuggestions onAddItem={handleAddSuggestion} />
@@ -195,6 +217,15 @@ const Index = () => {
             <PriceComparison />
           </div>
         </div>
+
+        {/* Checkout Modal */}
+        <CheckoutModal
+          open={showCheckout}
+          onOpenChange={setShowCheckout}
+          items={items}
+          onCompletePurchase={handleClearChecked}
+          budget={budget}
+        />
       </main>
 
       {/* Footer */}
