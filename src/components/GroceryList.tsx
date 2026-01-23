@@ -1,4 +1,4 @@
-import { ShoppingBag, Trash2, CheckCircle } from 'lucide-react';
+import { ShoppingBag, Trash2, CheckCircle, ShoppingCart } from 'lucide-react';
 import { GroceryItem } from '@/types/grocery';
 import { GroceryItemCard } from '@/components/GroceryItem';
 import { Button } from '@/components/ui/button';
@@ -50,13 +50,13 @@ export function GroceryList({
         </div>
         {checkedCount > 0 && (
           <Button
-            variant="ghost"
+            variant="hero"
             size="sm"
-            className="text-destructive hover:text-destructive"
+            className="gap-1"
             onClick={onClearChecked}
           >
-            <Trash2 className="h-4 w-4 mr-1" />
-            Clear {checkedCount} checked
+            <ShoppingCart className="h-4 w-4" />
+            Checkout ({checkedCount})
           </Button>
         )}
       </div>

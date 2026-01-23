@@ -4,6 +4,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import { ProductImage } from '@/components/ProductImage';
 import { cn } from '@/lib/utils';
 
 interface GroceryItemProps {
@@ -24,7 +25,7 @@ export function GroceryItemCard({ item, onToggle, onRemove, onUpdateQuantity }: 
         item.isChecked && "opacity-60 bg-muted/50"
       )}
     >
-      <div className="flex items-start gap-4">
+      <div className="flex items-start gap-3">
         <div className="pt-1">
           <Checkbox
             checked={item.isChecked}
@@ -32,6 +33,13 @@ export function GroceryItemCard({ item, onToggle, onRemove, onUpdateQuantity }: 
             className="h-5 w-5 rounded-md"
           />
         </div>
+        
+        <ProductImage 
+          name={item.name} 
+          category={item.category} 
+          image={item.image} 
+          size="md" 
+        />
 
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
