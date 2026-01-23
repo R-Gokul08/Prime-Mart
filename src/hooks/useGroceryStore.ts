@@ -1,10 +1,11 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { GroceryItem, Budget } from '@/types/grocery';
 import { sampleGroceryItems } from '@/data/mockData';
+import { useLocalStorage } from './useLocalStorage';
 
 export function useGroceryStore() {
-  const [items, setItems] = useState<GroceryItem[]>(sampleGroceryItems);
-  const [budget, setBudget] = useState<Budget>({
+  const [items, setItems] = useLocalStorage<GroceryItem[]>('smartcart-items', sampleGroceryItems);
+  const [budget, setBudget] = useLocalStorage<Budget>('smartcart-budget', {
     total: 100,
     spent: 0,
     remaining: 100,
@@ -18,11 +19,11 @@ export function useGroceryStore() {
       isChecked: false,
     };
     setItems(prev => [newItem, ...prev]);
-  }, []);
+  }, [setItems]);
 
   const removeItem = useCallback((id: string) => {
     setItems(prev => prev.filter(item => item.id !== id));
-  }, []);
+  }, [setItems]);
 
   const toggleItem = useCallback((id: string) => {
     setItems(prev =>
@@ -30,7 +31,7 @@ export function useGroceryStore() {
         item.id === id ? { ...item, isChecked: !item.isChecked } : item
       )
     );
-  }, []);
+  }, [setItems]);
 
   const updateQuantity = useCallback((id: string, quantity: number) => {
     setItems(prev =>
@@ -38,11 +39,23 @@ export function useGroceryStore() {
         item.id === id ? { ...item, quantity: Math.max(1, quantity) } : item
       )
     );
-  }, []);
+  }, [setItems]);
 
   const clearChecked = useCallback(() => {
     setItems(prev => prev.filter(item => !item.isChecked));
-  }, []);
+  }, [setItems]);
+
+  // Get checked items before clearing (for inventory tracking)
+  const getCheckedItems = useCallback(() => {
+    return items.filter(item => item.isChecked);
+  }, [items]);
+
+  // Check for potential duplicate
+  const checkDuplicate = useCallback((name: string) => {
+    return items.find(
+      item => item.name.toLowerCase() === name.toLowerCase() && !item.isChecked
+    );
+  }, [items]);
 
   const stats = useMemo(() => {
     const totalItems = items.length;
@@ -77,7 +90,7 @@ export function useGroceryStore() {
       spent: prev.spent,
       remaining: total - prev.spent,
     }));
-  }, []);
+  }, [setBudget]);
 
   return {
     items,
@@ -88,6 +101,8 @@ export function useGroceryStore() {
     toggleItem,
     updateQuantity,
     clearChecked,
+    getCheckedItems,
+    checkDuplicate,
     updateBudget,
   };
 }

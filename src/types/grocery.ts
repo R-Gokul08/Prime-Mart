@@ -40,3 +40,42 @@ export interface SmartSuggestion {
   reason: string;
   type: 'history' | 'deal' | 'healthy' | 'budget';
 }
+
+// User Profile types
+export interface UserProfile {
+  id: string;
+  name: string;
+  email: string;
+  favoriteStores: string[];
+  favoriteBrands: string[];
+  createdAt: Date;
+}
+
+// Inventory tracking types
+export interface InventoryItem {
+  id: string;
+  name: string;
+  category: string;
+  currentStock: number;
+  minStock: number;
+  unit: string;
+  lastPurchased?: Date;
+  averageConsumption?: number; // per week
+}
+
+export interface LowStockAlert {
+  itemId: string;
+  itemName: string;
+  currentStock: number;
+  minStock: number;
+  unit: string;
+}
+
+export interface PurchaseHistory {
+  id: string;
+  itemName: string;
+  quantity: number;
+  price: number;
+  store: string;
+  purchasedAt: Date;
+}
