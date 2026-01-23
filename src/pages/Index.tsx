@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Header } from '@/components/Header';
 import { StatsCards } from '@/components/StatsCards';
 import { AddItemForm } from '@/components/AddItemForm';
@@ -6,9 +7,20 @@ import { SmartSuggestions } from '@/components/SmartSuggestions';
 import { ExpiryReminders } from '@/components/ExpiryReminders';
 import { BudgetTracker } from '@/components/BudgetTracker';
 import { PriceComparison } from '@/components/PriceComparison';
+import { UserProfile } from '@/components/UserProfile';
+import { InventoryTracker } from '@/components/InventoryTracker';
 import { useGroceryStore } from '@/hooks/useGroceryStore';
+import { useUserProfile } from '@/hooks/useUserProfile';
+import { useInventory } from '@/hooks/useInventory';
+import { useOfflineStatus } from '@/hooks/useOfflineStatus';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { toast } from 'sonner';
 
 const Index = () => {
+  const [showProfile, setShowProfile] = useState(false);
+  const { isOnline } = useOfflineStatus();
+  
   const {
     items,
     budget,
@@ -18,7 +30,26 @@ const Index = () => {
     toggleItem,
     updateQuantity,
     clearChecked,
+    getCheckedItems,
+    checkDuplicate,
   } = useGroceryStore();
+
+  const {
+    profile,
+    updateProfile,
+    toggleFavoriteStore,
+    toggleFavoriteBrand,
+  } = useUserProfile();
+
+  const {
+    inventory,
+    lowStockAlerts,
+    checkDuplicate: checkInventoryDuplicate,
+    recordPurchase,
+    useFromInventory,
+    updateMinStock,
+    removeFromInventory,
+  } = useInventory();
 
   const handleAddSuggestion = (item: any) => {
     addItem({
@@ -34,11 +65,66 @@ const Index = () => {
     });
   };
 
+  const handleClearChecked = () => {
+    // Record purchases before clearing
+    const checkedItems = getCheckedItems();
+    checkedItems.forEach(item => {
+      recordPurchase(item);
+    });
+    
+    if (checkedItems.length > 0) {
+      toast.success(`${checkedItems.length} items added to inventory!`);
+    }
+    
+    clearChecked();
+  };
+
+  const handleAddLowStockToList = (item: any) => {
+    addItem({
+      name: item.name,
+      category: item.category,
+      quantity: item.minStock - item.currentStock,
+      unit: item.unit,
+      price: 0,
+      isHealthy: false,
+      hasDeal: false,
+      store: profile.favoriteStores[0] || 'FreshMart',
+    });
+    toast.success(`${item.name} added to shopping list!`);
+  };
+
+  const notificationCount = lowStockAlerts.length;
+
   return (
     <div className="min-h-screen bg-background">
-      <Header />
+      <Header 
+        notificationCount={notificationCount} 
+        isOnline={isOnline}
+        onUserClick={() => setShowProfile(true)}
+      />
+      
+      {/* User Profile Sheet */}
+      <Sheet open={showProfile} onOpenChange={setShowProfile}>
+        <SheetContent className="w-full sm:max-w-md overflow-y-auto">
+          <div className="py-4 space-y-6">
+            <UserProfile
+              profile={profile}
+              onUpdateProfile={updateProfile}
+              onToggleFavoriteStore={toggleFavoriteStore}
+              onToggleFavoriteBrand={toggleFavoriteBrand}
+            />
+          </div>
+        </SheetContent>
+      </Sheet>
       
       <main className="container py-6 space-y-6">
+        {/* Offline Banner */}
+        {!isOnline && (
+          <div className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-yellow-600 text-sm text-center">
+            📴 You're offline. Your data is saved locally and will sync when you're back online.
+          </div>
+        )}
+
         {/* Hero Section */}
         <section className="relative overflow-hidden rounded-3xl gradient-hero p-8 text-primary-foreground">
           <div className="relative z-10">
@@ -60,20 +146,50 @@ const Index = () => {
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Left Column - Main List */}
           <div className="lg:col-span-2 space-y-6">
-            <AddItemForm onAddItem={addItem} />
+            <AddItemForm 
+              onAddItem={addItem} 
+              checkDuplicate={checkDuplicate}
+              checkInventoryDuplicate={checkInventoryDuplicate}
+            />
             <GroceryList
               items={items}
               onToggle={toggleItem}
               onRemove={removeItem}
               onUpdateQuantity={updateQuantity}
-              onClearChecked={clearChecked}
+              onClearChecked={handleClearChecked}
               progress={stats.progress}
             />
           </div>
 
           {/* Right Column - Sidebar */}
           <div className="space-y-6">
-            <BudgetTracker budget={budget} currentSpend={stats.totalPrice} />
+            <Tabs defaultValue="budget" className="w-full">
+              <TabsList className="w-full grid grid-cols-2">
+                <TabsTrigger value="budget">Budget</TabsTrigger>
+                <TabsTrigger value="inventory">
+                  Inventory
+                  {lowStockAlerts.length > 0 && (
+                    <span className="ml-1 px-1.5 py-0.5 text-xs bg-destructive text-destructive-foreground rounded-full">
+                      {lowStockAlerts.length}
+                    </span>
+                  )}
+                </TabsTrigger>
+              </TabsList>
+              <TabsContent value="budget" className="mt-4">
+                <BudgetTracker budget={budget} currentSpend={stats.totalPrice} />
+              </TabsContent>
+              <TabsContent value="inventory" className="mt-4">
+                <InventoryTracker
+                  inventory={inventory}
+                  lowStockAlerts={lowStockAlerts}
+                  onUseItem={useFromInventory}
+                  onUpdateMinStock={updateMinStock}
+                  onRemoveItem={removeFromInventory}
+                  onAddToShoppingList={handleAddLowStockToList}
+                />
+              </TabsContent>
+            </Tabs>
+            
             <SmartSuggestions onAddItem={handleAddSuggestion} />
             <ExpiryReminders />
             <PriceComparison />
@@ -85,6 +201,9 @@ const Index = () => {
       <footer className="border-t mt-12">
         <div className="container py-6 text-center text-sm text-muted-foreground">
           <p>SmartCart — Your intelligent grocery companion 🥬</p>
+          <p className="text-xs mt-1 opacity-70">
+            {isOnline ? '✅ Connected' : '📴 Offline Mode'} • Data saved locally
+          </p>
         </div>
       </footer>
     </div>

@@ -1,12 +1,15 @@
 import { ShoppingCart, Bell, User, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { OfflineIndicator } from './OfflineIndicator';
 
 interface HeaderProps {
   notificationCount?: number;
+  isOnline?: boolean;
+  onUserClick?: () => void;
 }
 
-export function Header({ notificationCount = 3 }: HeaderProps) {
+export function Header({ notificationCount = 3, isOnline = true, onUserClick }: HeaderProps) {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-card/80 backdrop-blur-md">
       <div className="container flex h-16 items-center justify-between gap-4">
@@ -32,6 +35,7 @@ export function Header({ notificationCount = 3 }: HeaderProps) {
         </div>
 
         <div className="flex items-center gap-2">
+          <OfflineIndicator isOnline={isOnline} />
           <Button variant="ghost" size="icon" className="relative">
             <Bell className="h-5 w-5" />
             {notificationCount > 0 && (
@@ -40,7 +44,7 @@ export function Header({ notificationCount = 3 }: HeaderProps) {
               </Badge>
             )}
           </Button>
-          <Button variant="ghost" size="icon">
+          <Button variant="ghost" size="icon" onClick={onUserClick}>
             <User className="h-5 w-5" />
           </Button>
         </div>

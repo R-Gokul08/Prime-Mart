@@ -6,13 +6,16 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useVoiceInput } from '@/hooks/useVoiceInput';
 import { categories, stores } from '@/data/mockData';
-import { GroceryItem } from '@/types/grocery';
+import { GroceryItem, InventoryItem } from '@/types/grocery';
+import { DuplicateAlert } from './DuplicateAlert';
 
 interface AddItemFormProps {
   onAddItem: (item: Omit<GroceryItem, 'id' | 'addedAt' | 'isChecked'>) => void;
+  checkDuplicate?: (name: string) => GroceryItem | undefined;
+  checkInventoryDuplicate?: (name: string) => InventoryItem | undefined;
 }
 
-export function AddItemForm({ onAddItem }: AddItemFormProps) {
+export function AddItemForm({ onAddItem, checkDuplicate, checkInventoryDuplicate }: AddItemFormProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [name, setName] = useState('');
   const [category, setCategory] = useState('');
@@ -20,6 +23,8 @@ export function AddItemForm({ onAddItem }: AddItemFormProps) {
   const [unit, setUnit] = useState('pcs');
   const [price, setPrice] = useState('');
   const [store, setStore] = useState('');
+  const [duplicateItem, setDuplicateItem] = useState<InventoryItem | null>(null);
+  const [pendingItem, setPendingItem] = useState<Omit<GroceryItem, 'id' | 'addedAt' | 'isChecked'> | null>(null);
 
   const { isListening, transcript, startListening, stopListening, resetTranscript, isSupported } = useVoiceInput();
 
@@ -29,22 +34,7 @@ export function AddItemForm({ onAddItem }: AddItemFormProps) {
     }
   }, [transcript]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name.trim()) return;
-
-    onAddItem({
-      name: name.trim(),
-      category: category || 'Pantry',
-      quantity,
-      unit,
-      price: parseFloat(price) || 0,
-      isHealthy: false,
-      hasDeal: false,
-      store: store || 'FreshMart',
-    });
-
-    // Reset form
+  const resetForm = () => {
     setName('');
     setCategory('');
     setQuantity(1);
@@ -53,6 +43,61 @@ export function AddItemForm({ onAddItem }: AddItemFormProps) {
     setStore('');
     resetTranscript();
     setIsOpen(false);
+    setDuplicateItem(null);
+    setPendingItem(null);
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+
+    const newItem = {
+      name: name.trim(),
+      category: category || 'Pantry',
+      quantity,
+      unit,
+      price: parseFloat(price) || 0,
+      isHealthy: false,
+      hasDeal: false,
+      store: store || 'FreshMart',
+    };
+
+    // Check for duplicates in inventory
+    if (checkInventoryDuplicate) {
+      const inventoryDupe = checkInventoryDuplicate(name.trim());
+      if (inventoryDupe) {
+        setDuplicateItem(inventoryDupe);
+        setPendingItem(newItem);
+        return;
+      }
+    }
+
+    // Check for duplicates in shopping list
+    if (checkDuplicate) {
+      const listDupe = checkDuplicate(name.trim());
+      if (listDupe) {
+        setDuplicateItem({
+          id: listDupe.id,
+          name: listDupe.name,
+          category: listDupe.category,
+          currentStock: listDupe.quantity,
+          minStock: 1,
+          unit: listDupe.unit,
+        });
+        setPendingItem(newItem);
+        return;
+      }
+    }
+
+    onAddItem(newItem);
+    resetForm();
+  };
+
+  const handleConfirmAdd = () => {
+    if (pendingItem) {
+      onAddItem(pendingItem);
+    }
+    resetForm();
   };
 
   const handleVoiceToggle = () => {
@@ -85,6 +130,17 @@ export function AddItemForm({ onAddItem }: AddItemFormProps) {
           <X className="h-4 w-4" />
         </Button>
       </div>
+
+      {duplicateItem && (
+        <DuplicateAlert
+          existingItem={duplicateItem}
+          onConfirmAdd={handleConfirmAdd}
+          onCancel={() => {
+            setDuplicateItem(null);
+            setPendingItem(null);
+          }}
+        />
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="flex gap-2">
