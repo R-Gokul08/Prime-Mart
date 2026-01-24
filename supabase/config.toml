@@ -1,1 +1,7 @@
 project_id = "erqfpgyjegkcaghpmvzv"
+
+[functions.ai-assistant]
+verify_jwt = false
+
+[functions.scrape-grocery-products]
+verify_jwt = false

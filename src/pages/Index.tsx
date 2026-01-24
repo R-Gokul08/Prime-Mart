@@ -14,6 +14,7 @@ import { CheckoutModal } from '@/components/CheckoutModal';
 import { QuickAddProduct } from '@/components/QuickAddProduct';
 import { PurchaseHistoryCard } from '@/components/PurchaseHistory';
 import { OrderTrackingBadge, OrderTracking } from '@/components/OrderTracking';
+import { OnlineProducts } from '@/components/OnlineProducts';
 import { AIAssistant } from '@/components/AIAssistant';
 import { GoogleLens } from '@/components/GoogleLens';
 import { useGroceryStore } from '@/hooks/useGroceryStore';
@@ -69,6 +70,7 @@ const Index = () => {
     clearChecked,
     getCheckedItems,
     checkDuplicate,
+    updateBudget,
   } = useGroceryStore();
 
   const {
@@ -274,7 +276,7 @@ const Index = () => {
                 <TabsTrigger value="history">History</TabsTrigger>
               </TabsList>
               <TabsContent value="budget" className="mt-4">
-                <BudgetTracker budget={budget} currentSpend={stats.totalPrice} />
+                <BudgetTracker budget={budget} currentSpend={stats.totalPrice} onUpdateBudget={updateBudget} />
               </TabsContent>
               <TabsContent value="inventory" className="mt-4">
                 <InventoryTracker
@@ -300,6 +302,7 @@ const Index = () => {
             )}
             
             <AIAssistant groceryItems={items} />
+            <OnlineProducts onAddItem={handleAddSuggestion} />
             <SmartSuggestions onAddItem={handleAddSuggestion} />
             <ExpiryReminders />
             <PriceComparison />
