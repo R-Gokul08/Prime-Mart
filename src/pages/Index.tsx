@@ -43,24 +43,6 @@ const Index = () => {
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const { isOnline } = useOfflineStatus();
 
-  // Auth state listener
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setUser(session?.user ?? null);
-    });
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    toast.success('Signed out successfully');
-  };
-  
   const {
     items,
     budget,
@@ -81,6 +63,42 @@ const Index = () => {
     toggleFavoriteStore,
     toggleFavoriteBrand,
   } = useUserProfile();
+
+  // Auth state listener - sync with profile
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+      
+      // Sync user profile with auth data when signed in
+      if (session?.user) {
+        setTimeout(() => {
+          updateProfile({
+            name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || '',
+            email: session.user.email || '',
+          });
+        }, 0);
+      }
+    });
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      
+      // Initial sync
+      if (session?.user) {
+        updateProfile({
+          name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || '',
+          email: session.user.email || '',
+        });
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [updateProfile]);
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    toast.success('Signed out successfully');
+  };
 
   const {
     inventory,
@@ -252,6 +270,9 @@ const Index = () => {
         {/* Quick Add Products */}
         <QuickAddProduct products={[]} onAdd={addItem} />
 
+        {/* Online Store Products - Centered */}
+        <OnlineProducts onAddItem={handleAddSuggestion} />
+
         {/* Main Content Grid */}
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Left Column - Main List */}
@@ -312,11 +333,11 @@ const Index = () => {
               />
             )}
             
-            <AIAssistant groceryItems={items} />
-            <OnlineProducts onAddItem={handleAddSuggestion} />
-            <SmartSuggestions onAddItem={handleAddSuggestion} />
-            <ExpiryReminders />
+            {/* Price Comparison - Above Smart Suggestions */}
             <PriceComparison />
+            <SmartSuggestions onAddItem={handleAddSuggestion} />
+            <AIAssistant groceryItems={items} />
+            <ExpiryReminders />
           </div>
         </div>
 

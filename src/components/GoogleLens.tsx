@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { formatPrice } from '@/lib/currency';
 
 interface GoogleLensProps {
   open: boolean;
@@ -211,7 +212,7 @@ export function GoogleLens({ open, onOpenChange, onAddItem }: GoogleLensProps) {
                   <Badge variant="secondary">{scannedProduct.category}</Badge>
                 </div>
                 <span className="text-xl font-bold text-primary">
-                  ${scannedProduct.estimatedPrice.toFixed(2)}
+                  {formatPrice(scannedProduct.estimatedPrice)}
                 </span>
               </div>
               
