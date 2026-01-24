@@ -79,3 +79,20 @@ export interface PurchaseHistory {
   store: string;
   purchasedAt: Date;
 }
+
+export type PaymentMethod = 'paytm' | 'googlepay' | 'phonepe' | 'card' | 'upi' | 'cash';
+export type OrderStatus = 'confirmed' | 'preparing' | 'out_for_delivery' | 'delivered';
+
+export interface Order {
+  id: string;
+  items: GroceryItem[];
+  subtotal: number;
+  tax: number;
+  savings: number;
+  total: number;
+  paymentMethod: PaymentMethod;
+  status: OrderStatus;
+  createdAt: Date;
+  estimatedDelivery: Date;
+  deliveryAddress: string;
+}

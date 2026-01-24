@@ -12,17 +12,22 @@ import { InventoryTracker } from '@/components/InventoryTracker';
 import { CheckoutModal } from '@/components/CheckoutModal';
 import { QuickAddProduct } from '@/components/QuickAddProduct';
 import { PurchaseHistoryCard } from '@/components/PurchaseHistory';
+import { OrderTrackingBadge, OrderTracking } from '@/components/OrderTracking';
 import { useGroceryStore } from '@/hooks/useGroceryStore';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useInventory } from '@/hooks/useInventory';
+import { useOrders } from '@/hooks/useOrders';
 import { useOfflineStatus } from '@/hooks/useOfflineStatus';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { toast } from 'sonner';
+import { Order } from '@/types/grocery';
 
 const Index = () => {
   const [showProfile, setShowProfile] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
+  const [showOrderTracking, setShowOrderTracking] = useState(false);
   const { isOnline } = useOfflineStatus();
   
   const {
@@ -56,6 +61,13 @@ const Index = () => {
     removeFromInventory,
   } = useInventory();
 
+  const {
+    createOrder,
+    getActiveOrder,
+  } = useOrders();
+
+  const activeOrder = getActiveOrder();
+
   const handleAddSuggestion = (item: any) => {
     addItem({
       name: item.name,
@@ -70,7 +82,7 @@ const Index = () => {
     });
   };
 
-  const handleClearChecked = () => {
+  const handleCompletePurchase = (order: Order) => {
     // Record purchases before clearing
     const checkedItems = getCheckedItems();
     checkedItems.forEach(item => {
@@ -78,7 +90,7 @@ const Index = () => {
     });
     
     if (checkedItems.length > 0) {
-      toast.success(`${checkedItems.length} items added to inventory!`);
+      toast.success(`Order #${order.id.slice(0, 8).toUpperCase()} confirmed! ${checkedItems.length} items added to inventory.`);
     }
     
     clearChecked();
@@ -212,6 +224,14 @@ const Index = () => {
               </TabsContent>
             </Tabs>
             
+            {/* Active Order Tracking */}
+            {activeOrder && (
+              <OrderTrackingBadge 
+                order={activeOrder} 
+                onClick={() => setShowOrderTracking(true)} 
+              />
+            )}
+            
             <SmartSuggestions onAddItem={handleAddSuggestion} />
             <ExpiryReminders />
             <PriceComparison />
@@ -223,9 +243,22 @@ const Index = () => {
           open={showCheckout}
           onOpenChange={setShowCheckout}
           items={items}
-          onCompletePurchase={handleClearChecked}
+          onCompletePurchase={handleCompletePurchase}
+          onCreateOrder={createOrder}
           budget={budget}
         />
+
+        {/* Order Tracking Dialog */}
+        {activeOrder && (
+          <Dialog open={showOrderTracking} onOpenChange={setShowOrderTracking}>
+            <DialogContent className="sm:max-w-lg p-0">
+              <OrderTracking 
+                order={activeOrder} 
+                onClose={() => setShowOrderTracking(false)} 
+              />
+            </DialogContent>
+          </Dialog>
+        )}
       </main>
 
       {/* Footer */}
