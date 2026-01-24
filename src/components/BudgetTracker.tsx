@@ -5,6 +5,7 @@ import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Budget } from '@/types/grocery';
+import { formatPrice, CURRENCY_SYMBOL } from '@/lib/currency';
 
 interface BudgetTrackerProps {
   budget: Budget;
@@ -59,13 +60,13 @@ export function BudgetTracker({ budget, currentSpend, onUpdateBudget }: BudgetTr
           <div className="space-y-3 p-4 bg-secondary/30 rounded-xl border border-border">
             <p className="text-sm font-medium text-foreground">Set your weekly budget</p>
             <div className="flex items-center gap-2">
-              <span className="text-lg font-bold">$</span>
+              <span className="text-lg font-bold">{CURRENCY_SYMBOL}</span>
               <Input
                 type="number"
                 value={newBudget}
                 onChange={(e) => setNewBudget(e.target.value)}
                 min="1"
-                step="0.01"
+                step="100"
                 className="flex-1"
                 placeholder="Enter amount"
               />
@@ -86,12 +87,12 @@ export function BudgetTracker({ budget, currentSpend, onUpdateBudget }: BudgetTr
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Weekly Budget</p>
-                <p className="text-2xl font-bold">${budget.total.toFixed(2)}</p>
+                <p className="text-2xl font-bold">{formatPrice(budget.total)}</p>
               </div>
               <div className="text-right">
                 <p className="text-sm text-muted-foreground">Current Spend</p>
                 <p className={`text-2xl font-bold ${isOverBudget ? 'text-destructive' : 'text-foreground'}`}>
-                  ${currentSpend.toFixed(2)}
+                  {formatPrice(currentSpend)}
                 </p>
               </div>
             </div>
@@ -108,14 +109,14 @@ export function BudgetTracker({ budget, currentSpend, onUpdateBudget }: BudgetTr
                     <>
                       <TrendingUp className="h-4 w-4 text-destructive" />
                       <span className="text-destructive font-medium">
-                        ${Math.abs(remaining).toFixed(2)} over
+                        {formatPrice(Math.abs(remaining))} over
                       </span>
                     </>
                   ) : (
                     <>
                       <TrendingDown className="h-4 w-4 text-success" />
                       <span className="text-success font-medium">
-                        ${remaining.toFixed(2)} left
+                        {formatPrice(remaining)} left
                       </span>
                     </>
                   )}

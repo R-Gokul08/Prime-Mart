@@ -1,5 +1,6 @@
-import { ShoppingBag, DollarSign, Heart, Tag } from 'lucide-react';
+import { ShoppingBag, IndianRupee, Heart, Tag } from 'lucide-react';
 import { Card } from '@/components/ui/card';
+import { formatPrice } from '@/lib/currency';
 
 interface StatsCardsProps {
   stats: {
@@ -21,13 +22,13 @@ export function StatsCards({ stats }: StatsCardsProps) {
     },
     {
       title: 'Estimated Cost',
-      value: `$${stats.totalPrice.toFixed(2)}`,
-      icon: DollarSign,
+      value: formatPrice(stats.totalPrice),
+      icon: IndianRupee,
       color: 'bg-accent/10 text-accent',
     },
     {
       title: 'You Save',
-      value: `$${stats.savings.toFixed(2)}`,
+      value: formatPrice(stats.savings),
       icon: Tag,
       color: 'bg-deal/10 text-deal',
     },

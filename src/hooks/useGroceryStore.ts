@@ -6,9 +6,9 @@ import { useLocalStorage } from './useLocalStorage';
 export function useGroceryStore() {
   const [items, setItems] = useLocalStorage<GroceryItem[]>('smartcart-items', sampleGroceryItems);
   const [budget, setBudget] = useLocalStorage<Budget>('smartcart-budget', {
-    total: 100,
+    total: 5000, // INR default budget
     spent: 0,
-    remaining: 100,
+    remaining: 5000,
   });
 
   const addItem = useCallback((item: Omit<GroceryItem, 'id' | 'addedAt' | 'isChecked'>) => {

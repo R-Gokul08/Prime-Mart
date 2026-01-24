@@ -1,23 +1,31 @@
-import { BarChart3, MapPin, ExternalLink } from 'lucide-react';
+import { BarChart3, MapPin, TrendingDown, Store } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { stores } from '@/data/mockData';
+import { formatPrice } from '@/lib/currency';
 
 interface PriceComparisonProps {
   itemName?: string;
 }
 
-// Mock price data
+// Mock price data for Indian stores
 const mockPrices = [
-  { store: 'FreshMart', price: 2.99, distance: '0.5 mi', isBest: false },
-  { store: 'SuperSave', price: 2.49, distance: '1.2 mi', isBest: true },
-  { store: 'GreenGrocer', price: 3.29, distance: '0.8 mi', isBest: false },
-  { store: 'MegaMart', price: 2.79, distance: '2.1 mi', isBest: false },
+  { store: 'BigBasket', price: 45, distance: '2 km', isBest: false },
+  { store: 'JioMart', price: 42, distance: '3.5 km', isBest: true },
+  { store: 'Amazon Fresh', price: 48, distance: '—', isBest: false },
+  { store: 'Zepto', price: 46, distance: '1 km', isBest: false },
+  { store: 'Blinkit', price: 47, distance: '1.5 km', isBest: false },
+  { store: 'DMart', price: 40, distance: '5 km', isBest: false },
 ];
 
-export function PriceComparison({ itemName = "Organic Bananas" }: PriceComparisonProps) {
-  const bestPrice = Math.min(...mockPrices.map(p => p.price));
-  const worstPrice = Math.max(...mockPrices.map(p => p.price));
+export function PriceComparison({ itemName = "Amul Butter 500g" }: PriceComparisonProps) {
+  const sortedPrices = [...mockPrices].sort((a, b) => a.price - b.price);
+  const bestPrice = sortedPrices[0].price;
+  const worstPrice = sortedPrices[sortedPrices.length - 1].price;
+
+  // Update best flag based on sorting
+  sortedPrices.forEach((item, index) => {
+    item.isBest = index === 0;
+  });
 
   return (
     <Card className="animate-fade-in">
@@ -33,7 +41,7 @@ export function PriceComparison({ itemName = "Organic Bananas" }: PriceCompariso
         </p>
         
         <div className="space-y-2">
-          {mockPrices.sort((a, b) => a.price - b.price).map((item, index) => {
+          {sortedPrices.map((item, index) => {
             const savingsPercent = ((worstPrice - item.price) / worstPrice * 100).toFixed(0);
             
             return (
@@ -49,6 +57,7 @@ export function PriceComparison({ itemName = "Organic Bananas" }: PriceCompariso
                   </span>
                   <div>
                     <div className="flex items-center gap-2">
+                      <Store className="h-4 w-4 text-muted-foreground" />
                       <span className="font-medium">{item.store}</span>
                       {item.isBest && (
                         <Badge variant="success" className="text-xs">
@@ -64,10 +73,11 @@ export function PriceComparison({ itemName = "Organic Bananas" }: PriceCompariso
                 </div>
                 <div className="text-right">
                   <p className={`text-lg font-bold ${item.isBest ? 'text-success' : ''}`}>
-                    ${item.price.toFixed(2)}
+                    {formatPrice(item.price)}
                   </p>
                   {item.price < worstPrice && (
-                    <p className="text-xs text-success">
+                    <p className="text-xs text-success flex items-center gap-1 justify-end">
+                      <TrendingDown className="h-3 w-3" />
                       Save {savingsPercent}%
                     </p>
                   )}

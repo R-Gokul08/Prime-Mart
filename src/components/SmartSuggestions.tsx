@@ -1,9 +1,9 @@
 import { Sparkles, Plus, History, Heart, Tag, Wallet } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { SmartSuggestion } from '@/types/grocery';
 import { smartSuggestions } from '@/data/mockData';
+import { formatPrice } from '@/lib/currency';
 
 interface SmartSuggestionsProps {
   onAddItem: (item: SmartSuggestion['item']) => void;
@@ -55,14 +55,14 @@ export function SmartSuggestions({ onAddItem }: SmartSuggestionsProps) {
                     {suggestion.item.hasDeal && suggestion.item.dealPrice ? (
                       <>
                         <p className="text-xs text-muted-foreground line-through">
-                          ${suggestion.item.price.toFixed(2)}
+                          {formatPrice(suggestion.item.price)}
                         </p>
                         <p className="font-bold text-deal">
-                          ${suggestion.item.dealPrice.toFixed(2)}
+                          {formatPrice(suggestion.item.dealPrice)}
                         </p>
                       </>
                     ) : (
-                      <p className="font-bold">${suggestion.item.price.toFixed(2)}</p>
+                      <p className="font-bold">{formatPrice(suggestion.item.price)}</p>
                     )}
                   </div>
                   <Button

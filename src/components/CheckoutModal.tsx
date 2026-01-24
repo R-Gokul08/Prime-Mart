@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ShoppingCart, CreditCard, CheckCircle2, Package, Sparkles, Truck } from 'lucide-react';
+import { ShoppingCart, CreditCard, Package, Truck } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -9,6 +9,7 @@ import { ProductImage } from '@/components/ProductImage';
 import { PaymentMethods } from '@/components/PaymentMethods';
 import { OrderTracking } from '@/components/OrderTracking';
 import { GroceryItem, PaymentMethod, Order } from '@/types/grocery';
+import { formatPrice } from '@/lib/currency';
 import { cn } from '@/lib/utils';
 
 interface CheckoutModalProps {
@@ -46,7 +47,7 @@ export function CheckoutModal({
     }
     return sum;
   }, 0);
-  const tax = subtotal * 0.08;
+  const tax = subtotal * 0.05; // 5% GST
   const total = subtotal + tax;
   
   const isOverBudget = total > budget.remaining;
@@ -115,7 +116,7 @@ export function CheckoutModal({
             {step === 'processing' && <><Package className="h-5 w-5 text-primary animate-pulse" /> Processing...</>}
           </DialogTitle>
           <DialogDescription>
-            {step === 'review' && `${checkedItems.length} items • Total: $${total.toFixed(2)}`}
+            {step === 'review' && `${checkedItems.length} items • Total: ${formatPrice(total)}`}
             {step === 'payment' && 'Choose your preferred payment method'}
             {step === 'processing' && 'Please wait while we process your order'}
           </DialogDescription>
@@ -128,12 +129,12 @@ export function CheckoutModal({
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Total Amount</p>
-                  <p className="text-3xl font-bold text-primary">${total.toFixed(2)}</p>
+                  <p className="text-3xl font-bold text-primary">{formatPrice(total)}</p>
                 </div>
                 <div className="text-right">
                   <p className="text-sm text-muted-foreground">{checkedItems.length} items</p>
                   {savings > 0 && (
-                    <Badge variant="deal" className="mt-1">Save ${savings.toFixed(2)}</Badge>
+                    <Badge variant="deal" className="mt-1">Save {formatPrice(savings)}</Badge>
                   )}
                 </div>
               </div>
@@ -148,11 +149,11 @@ export function CheckoutModal({
                     <div className="flex-1 min-w-0">
                       <p className="font-medium truncate">{item.name}</p>
                       <p className="text-xs text-muted-foreground">
-                        {item.quantity} {item.unit} × ${price.toFixed(2)}
+                        {item.quantity} {item.unit} × {formatPrice(price)}
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="font-semibold">${(price * item.quantity).toFixed(2)}</p>
+                      <p className="font-semibold">{formatPrice(price * item.quantity)}</p>
                       {item.hasDeal && (
                         <Badge variant="deal" className="text-xs">Deal</Badge>
                       )}
@@ -207,25 +208,25 @@ export function CheckoutModal({
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Subtotal</span>
-              <span>${subtotal.toFixed(2)}</span>
+              <span>{formatPrice(subtotal)}</span>
             </div>
             {savings > 0 && (
-              <div className="flex justify-between text-green-600">
+              <div className="flex justify-between text-success">
                 <span>Savings</span>
-                <span>-${savings.toFixed(2)}</span>
+                <span>-{formatPrice(savings)}</span>
               </div>
             )}
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Tax (8%)</span>
-              <span>${tax.toFixed(2)}</span>
+              <span className="text-muted-foreground">GST (5%)</span>
+              <span>{formatPrice(tax)}</span>
             </div>
             <Separator />
             <div className="flex justify-between font-bold text-lg">
               <span>Total</span>
-              <span className={cn(isOverBudget && 'text-destructive')}>${total.toFixed(2)}</span>
+              <span className={cn(isOverBudget && 'text-destructive')}>{formatPrice(total)}</span>
             </div>
             {isOverBudget && (
-              <p className="text-xs text-destructive">⚠️ This exceeds your remaining budget of ${budget.remaining.toFixed(2)}</p>
+              <p className="text-xs text-destructive">⚠️ This exceeds your remaining budget of {formatPrice(budget.remaining)}</p>
             )}
           </div>
         )}
@@ -258,7 +259,7 @@ export function CheckoutModal({
                 disabled={!selectedPayment}
               >
                 <Truck className="h-4 w-4" />
-                Pay ${total.toFixed(2)}
+                Pay {formatPrice(total)}
               </Button>
             </>
           )}

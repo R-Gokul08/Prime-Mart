@@ -7,9 +7,15 @@ interface HeaderProps {
   notificationCount?: number;
   isOnline?: boolean;
   onUserClick?: () => void;
+  onNotificationClick?: () => void;
 }
 
-export function Header({ notificationCount = 3, isOnline = true, onUserClick }: HeaderProps) {
+export function Header({ 
+  notificationCount = 0, 
+  isOnline = true, 
+  onUserClick,
+  onNotificationClick 
+}: HeaderProps) {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-card/80 backdrop-blur-md">
       <div className="container flex h-16 items-center justify-between gap-4">
@@ -18,7 +24,7 @@ export function Header({ notificationCount = 3, isOnline = true, onUserClick }: 
             <ShoppingCart className="h-5 w-5 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="text-lg font-bold text-foreground">SmartCart</h1>
+            <h1 className="text-lg font-bold text-foreground">Prime Mart</h1>
             <p className="text-xs text-muted-foreground">Shop Smarter</p>
           </div>
         </div>
@@ -36,7 +42,7 @@ export function Header({ notificationCount = 3, isOnline = true, onUserClick }: 
 
         <div className="flex items-center gap-2">
           <OfflineIndicator isOnline={isOnline} />
-          <Button variant="ghost" size="icon" className="relative">
+          <Button variant="ghost" size="icon" className="relative" onClick={onNotificationClick}>
             <Bell className="h-5 w-5" />
             {notificationCount > 0 && (
               <Badge variant="deal" className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-[10px]">

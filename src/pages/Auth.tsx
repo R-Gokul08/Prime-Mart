@@ -83,7 +83,7 @@ export default function Auth() {
         return;
       }
 
-      toast.success('Welcome back!');
+      toast.success('Welcome back to Prime Mart!');
       navigate('/');
     } catch (error) {
       toast.error('An unexpected error occurred');
@@ -120,7 +120,7 @@ export default function Auth() {
         return;
       }
 
-      toast.success('Account created! Welcome to SmartCart!');
+      toast.success('Account created! Welcome to Prime Mart!');
       navigate('/');
     } catch (error) {
       toast.error('An unexpected error occurred');
@@ -157,7 +157,7 @@ export default function Auth() {
           <div className="w-16 h-16 mx-auto bg-gradient-to-br from-primary to-primary/80 rounded-2xl flex items-center justify-center shadow-lg">
             <ShoppingCart className="h-8 w-8 text-primary-foreground" />
           </div>
-          <h1 className="text-3xl font-bold">SmartCart</h1>
+          <h1 className="text-3xl font-bold">Prime Mart</h1>
           <p className="text-muted-foreground">Your intelligent grocery companion</p>
         </div>
 
@@ -328,7 +328,7 @@ export default function Auth() {
         </Card>
 
         <p className="text-center text-xs text-muted-foreground">
-          By continuing, you agree to SmartCart's Terms of Service and Privacy Policy
+          By continuing, you agree to Prime Mart's Terms of Service and Privacy Policy
         </p>
       </div>
     </div>

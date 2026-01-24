@@ -15,6 +15,7 @@ import { QuickAddProduct } from '@/components/QuickAddProduct';
 import { PurchaseHistoryCard } from '@/components/PurchaseHistory';
 import { OrderTrackingBadge, OrderTracking } from '@/components/OrderTracking';
 import { OnlineProducts } from '@/components/OnlineProducts';
+import { NotificationsPanel } from '@/components/NotificationsPanel';
 import { AIAssistant } from '@/components/AIAssistant';
 import { GoogleLens } from '@/components/GoogleLens';
 import { useGroceryStore } from '@/hooks/useGroceryStore';
@@ -29,7 +30,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { Order } from '@/types/grocery';
-import { Scan, LogIn, LogOut, User } from 'lucide-react';
+import { Scan, LogIn, LogOut } from 'lucide-react';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 
 const Index = () => {
@@ -38,6 +39,7 @@ const Index = () => {
   const [showCheckout, setShowCheckout] = useState(false);
   const [showOrderTracking, setShowOrderTracking] = useState(false);
   const [showLens, setShowLens] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const { isOnline } = useOfflineStatus();
 
@@ -102,10 +104,10 @@ const Index = () => {
     addItem({
       name: item.name,
       category: item.category,
-      quantity: item.quantity,
-      unit: item.unit,
+      quantity: item.quantity || 1,
+      unit: item.unit || 'pcs',
       price: item.price,
-      isHealthy: item.isHealthy,
+      isHealthy: item.isHealthy || false,
       hasDeal: item.hasDeal,
       dealPrice: item.dealPrice,
       store: item.store,
@@ -145,12 +147,12 @@ const Index = () => {
       price: 0,
       isHealthy: false,
       hasDeal: false,
-      store: profile.favoriteStores[0] || 'FreshMart',
+      store: profile.favoriteStores[0] || 'BigBasket',
     });
     toast.success(`${item.name} added to shopping list!`);
   };
 
-  const notificationCount = lowStockAlerts.length;
+  const notificationCount = lowStockAlerts.length + (activeOrder ? 1 : 0);
 
   return (
     <div className="min-h-screen bg-background">
@@ -158,6 +160,15 @@ const Index = () => {
         notificationCount={notificationCount} 
         isOnline={isOnline}
         onUserClick={() => setShowProfile(true)}
+        onNotificationClick={() => setShowNotifications(true)}
+      />
+
+      {/* Notifications Panel */}
+      <NotificationsPanel
+        open={showNotifications}
+        onOpenChange={setShowNotifications}
+        activeOrder={activeOrder}
+        lowStockAlerts={lowStockAlerts}
       />
       
       {/* User Profile Sheet */}
@@ -177,7 +188,7 @@ const Index = () => {
       <main className="container py-6 space-y-6">
         {/* Offline Banner */}
         {!isOnline && (
-          <div className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-yellow-600 text-sm text-center">
+          <div className="p-3 rounded-lg bg-warning/10 border border-warning/20 text-warning text-sm text-center">
             📴 You're offline. Your data is saved locally and will sync when you're back online.
           </div>
         )}
@@ -231,8 +242,8 @@ const Index = () => {
               </Button>
             </div>
           </div>
-          <div className="absolute right-0 top-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-20 -mt-20" />
-          <div className="absolute right-20 bottom-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mb-10" />
+          <div className="absolute right-0 top-0 w-64 h-64 bg-primary-foreground/10 rounded-full blur-3xl -mr-20 -mt-20" />
+          <div className="absolute right-20 bottom-0 w-32 h-32 bg-primary-foreground/10 rounded-full blur-2xl -mb-10" />
         </section>
 
         {/* Stats Overview */}
@@ -319,7 +330,7 @@ const Index = () => {
             unit: 'pcs',
             isHealthy: false,
             hasDeal: false,
-            store: 'FreshMart',
+            store: 'BigBasket',
           })}
         />
 
@@ -349,7 +360,7 @@ const Index = () => {
       {/* Footer */}
       <footer className="border-t mt-12">
         <div className="container py-6 text-center text-sm text-muted-foreground">
-          <p>SmartCart — Your intelligent grocery companion 🥬</p>
+          <p>Prime Mart — Your intelligent grocery companion 🥬</p>
           <p className="text-xs mt-1 opacity-70">
             {isOnline ? '✅ Connected' : '📴 Offline Mode'} • Data saved locally
           </p>
