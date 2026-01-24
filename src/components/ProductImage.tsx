@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { getProductImage, categoryEmojis } from '@/lib/productImages';
+import { getProductImage, categoryEmojis, getGoogleImageUrl } from '@/lib/productImages';
 import { cn } from '@/lib/utils';
 
 interface ProductImageProps {
@@ -12,6 +12,7 @@ interface ProductImageProps {
 
 export function ProductImage({ name, category, image, size = 'md', className }: ProductImageProps) {
   const [imageError, setImageError] = useState(false);
+  const [fallbackError, setFallbackError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   
   const sizeClasses = {
@@ -26,10 +27,14 @@ export function ProductImage({ name, category, image, size = 'md', className }: 
     lg: 'text-4xl',
   };
   
-  const imageUrl = image || getProductImage(name, category);
+  // Try local image first, then Google images
+  const localImage = getProductImage(name, category);
+  const imageUrl = image || localImage;
+  const fallbackImageUrl = !imageUrl ? getGoogleImageUrl(name) : null;
   const fallbackEmoji = category ? categoryEmojis[category] || '🛒' : '🛒';
   
-  if (!imageUrl || imageError) {
+  // Show emoji if both image sources failed
+  if ((imageError && (!fallbackImageUrl || fallbackError)) || (!imageUrl && !fallbackImageUrl)) {
     return (
       <div 
         className={cn(
@@ -43,6 +48,9 @@ export function ProductImage({ name, category, image, size = 'md', className }: 
     );
   }
   
+  // Use fallback image if primary failed
+  const currentImageUrl = imageError && fallbackImageUrl ? fallbackImageUrl : (imageUrl || fallbackImageUrl);
+  
   return (
     <div 
       className={cn(
@@ -55,7 +63,7 @@ export function ProductImage({ name, category, image, size = 'md', className }: 
         <div className="absolute inset-0 bg-muted animate-pulse" />
       )}
       <img
-        src={imageUrl}
+        src={currentImageUrl || ''}
         alt={name}
         className={cn(
           "w-full h-full object-cover transition-opacity duration-300",
@@ -63,8 +71,13 @@ export function ProductImage({ name, category, image, size = 'md', className }: 
         )}
         onLoad={() => setIsLoading(false)}
         onError={() => {
-          setImageError(true);
-          setIsLoading(false);
+          if (!imageError) {
+            setImageError(true);
+            setIsLoading(true);
+          } else {
+            setFallbackError(true);
+            setIsLoading(false);
+          }
         }}
         loading="lazy"
       />

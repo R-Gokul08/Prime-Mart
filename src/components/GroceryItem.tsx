@@ -16,8 +16,9 @@ interface GroceryItemProps {
 }
 
 export function GroceryItemCard({ item, onToggle, onRemove, onUpdateQuantity }: GroceryItemProps) {
-  const displayPrice = item.hasDeal && item.dealPrice ? item.dealPrice : item.price;
-  const totalPrice = displayPrice * item.quantity;
+  const displayPrice = item.hasDeal && item.dealPrice ? item.dealPrice : (item.price || 0);
+  const quantity = item.quantity || 1;
+  const totalPrice = displayPrice * quantity;
 
   return (
     <Card

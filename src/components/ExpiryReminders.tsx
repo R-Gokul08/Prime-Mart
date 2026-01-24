@@ -1,9 +1,53 @@
+import { useMemo } from 'react';
 import { AlertTriangle, Clock } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { expiringItems } from '@/data/mockData';
+import { GroceryItem } from '@/types/grocery';
+import { categoryEmojis } from '@/lib/productImages';
 
-export function ExpiryReminders() {
+interface ExpiryRemindersProps {
+  items?: GroceryItem[];
+}
+
+// Sample expiring items when no user items are available
+const sampleExpiringItems = [
+  { name: 'Milk', daysLeft: 2, icon: '🥛', category: 'Dairy & Eggs' },
+  { name: 'Coriander', daysLeft: 3, icon: '🌿', category: 'Fruits & Vegetables' },
+  { name: 'Chicken', daysLeft: 1, icon: '🍗', category: 'Meat & Seafood' },
+  { name: 'Bread', daysLeft: 4, icon: '🍞', category: 'Bakery' },
+  { name: 'Yogurt', daysLeft: 5, icon: '🥛', category: 'Dairy & Eggs' },
+  { name: 'Tomatoes', daysLeft: 3, icon: '🍅', category: 'Fruits & Vegetables' },
+  { name: 'Fish', daysLeft: 1, icon: '🐟', category: 'Meat & Seafood' },
+  { name: 'Paneer', daysLeft: 4, icon: '🧀', category: 'Dairy & Eggs' },
+];
+
+export function ExpiryReminders({ items = [] }: ExpiryRemindersProps) {
+  const expiringItems = useMemo(() => {
+    // If user has items with expiry, use those
+    const userExpiringItems = items
+      .filter(item => item.expiryDays && item.expiryDays <= 7 && !item.isChecked)
+      .map(item => ({
+        name: item.name,
+        daysLeft: item.expiryDays || 0,
+        icon: categoryEmojis[item.category] || '🛒',
+        category: item.category,
+      }))
+      .sort((a, b) => a.daysLeft - b.daysLeft);
+
+    // If user has expiring items, show those
+    if (userExpiringItems.length > 0) {
+      return userExpiringItems.slice(0, 4);
+    }
+
+    // Otherwise show random sample items
+    const shuffled = [...sampleExpiringItems].sort(() => Math.random() - 0.5);
+    return shuffled.slice(0, 3);
+  }, [items]);
+
+  if (expiringItems.length === 0) {
+    return null;
+  }
+
   return (
     <Card className="animate-fade-in border-warning/30 bg-warning/5">
       <CardHeader className="pb-3">
@@ -16,7 +60,7 @@ export function ExpiryReminders() {
         <div className="space-y-2">
           {expiringItems.map((item, index) => (
             <div
-              key={index}
+              key={`${item.name}-${index}`}
               className="flex items-center justify-between p-3 rounded-xl bg-card"
             >
               <div className="flex items-center gap-3">
