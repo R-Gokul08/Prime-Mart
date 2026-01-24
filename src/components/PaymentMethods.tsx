@@ -3,6 +3,7 @@ import { CreditCard, Smartphone, ChevronRight } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PaymentMethod } from '@/types/grocery';
+import { formatPrice } from '@/lib/currency';
 import { cn } from '@/lib/utils';
 
 interface PaymentMethodsProps {
@@ -65,7 +66,7 @@ export function PaymentMethods({ selectedMethod, onSelect, total }: PaymentMetho
           <Smartphone className="h-5 w-5 text-primary" />
           Select Payment Method
         </h3>
-        <span className="text-lg font-bold text-primary">${total.toFixed(2)}</span>
+        <span className="text-lg font-bold text-primary">{formatPrice(total)}</span>
       </div>
 
       <div className="grid gap-2">
@@ -142,7 +143,7 @@ export function PaymentMethods({ selectedMethod, onSelect, total }: PaymentMetho
               {paymentOptions.find(p => p.id === selectedMethod)?.icon}
             </div>
             <span>
-              Pay <span className="font-bold">${total.toFixed(2)}</span> using{' '}
+              Pay <span className="font-bold">{formatPrice(total)}</span> using{' '}
               <span className="font-medium">{paymentOptions.find(p => p.id === selectedMethod)?.name}</span>
             </span>
           </div>

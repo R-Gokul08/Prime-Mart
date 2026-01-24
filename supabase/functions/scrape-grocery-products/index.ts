@@ -11,7 +11,20 @@ interface GroceryProduct {
   image?: string;
   dealPrice?: number;
   hasDeal: boolean;
+  rating?: number;
+  unit?: string;
+  description?: string;
 }
+
+// Indian grocery stores to search
+const indianStoreQueries = [
+  { store: 'BigBasket', query: 'site:bigbasket.com' },
+  { store: 'JioMart', query: 'site:jiomart.com' },
+  { store: 'Amazon Fresh', query: 'site:amazon.in grocery fresh' },
+  { store: 'Flipkart Grocery', query: 'site:flipkart.com grocery' },
+  { store: 'Zepto', query: 'site:zepto.com' },
+  { store: 'Blinkit', query: 'site:blinkit.com' },
+];
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -30,76 +43,133 @@ Deno.serve(async (req) => {
 
     const { searchQuery, category } = await req.json();
     
-    console.log('Searching for grocery products:', searchQuery || category || 'all');
+    console.log('Searching for Indian grocery products:', searchQuery || category || 'all');
 
-    // Search for grocery products from popular stores
-    const searchTerms = searchQuery || category || 'grocery products deals';
+    // Build search query for Indian grocery stores
+    const searchTerms = searchQuery || category || 'grocery products fresh vegetables fruits';
     
-    const response = await fetch('https://api.firecrawl.dev/v1/search', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        query: `${searchTerms} site:amazon.com OR site:walmart.com OR site:target.com OR site:instacart.com`,
-        limit: 20,
-        scrapeOptions: {
-          formats: ['markdown'],
-        },
-      }),
-    });
+    // Search across multiple Indian stores
+    const storeSearches = indianStoreQueries.slice(0, 3); // Limit to 3 stores for speed
+    const allProducts: GroceryProduct[] = [];
 
-    const data = await response.json();
+    for (const storeInfo of storeSearches) {
+      try {
+        const response = await fetch('https://api.firecrawl.dev/v1/search', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            query: `${searchTerms} ${storeInfo.query}`,
+            limit: 10,
+            lang: 'en',
+            country: 'IN',
+            scrapeOptions: {
+              formats: ['markdown'],
+            },
+          }),
+        });
 
-    if (!response.ok) {
-      console.error('Firecrawl API error:', data);
-      return new Response(
-        JSON.stringify({ success: false, error: data.error || 'Failed to search products' }),
-        { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+        const data = await response.json();
 
-    // Parse products from search results
-    const products: GroceryProduct[] = [];
-    
-    if (data.data && Array.isArray(data.data)) {
-      for (const result of data.data) {
-        // Extract store from URL
-        let store = 'Unknown';
-        if (result.url?.includes('amazon')) store = 'Amazon';
-        else if (result.url?.includes('walmart')) store = 'Walmart';
-        else if (result.url?.includes('target')) store = 'Target';
-        else if (result.url?.includes('instacart')) store = 'Instacart';
+        if (response.ok && data.data && Array.isArray(data.data)) {
+          for (const result of data.data) {
+            // Parse price in INR from content
+            const priceMatch = result.markdown?.match(/₹\s*(\d+(?:,\d{3})*(?:\.\d{2})?)|Rs\.?\s*(\d+(?:,\d{3})*(?:\.\d{2})?)|(\d+(?:,\d{3})*(?:\.\d{2})?)\s*(?:INR|rupees)/i);
+            let price = 0;
+            if (priceMatch) {
+              const priceStr = (priceMatch[1] || priceMatch[2] || priceMatch[3]).replace(/,/g, '');
+              price = parseFloat(priceStr);
+            }
 
-        // Parse price from content if available
-        const priceMatch = result.markdown?.match(/\$(\d+\.?\d*)/);
-        const price = priceMatch ? parseFloat(priceMatch[1]) : 0;
+            // Try to extract deal/MRP price
+            const mrpMatch = result.markdown?.match(/MRP[:\s]*₹?\s*(\d+(?:,\d{3})*(?:\.\d{2})?)/i);
+            const originalPrice = mrpMatch ? parseFloat(mrpMatch[1].replace(/,/g, '')) : undefined;
 
-        // Try to extract deal price
-        const dealMatch = result.markdown?.match(/was\s*\$(\d+\.?\d*)/i);
-        const originalPrice = dealMatch ? parseFloat(dealMatch[1]) : undefined;
+            // Extract rating
+            const ratingMatch = result.markdown?.match(/(\d+\.?\d*)\s*(?:out of 5|\/5|stars?)/i);
+            const rating = ratingMatch ? parseFloat(ratingMatch[1]) : undefined;
 
-        if (result.title) {
-          products.push({
-            name: result.title.replace(/\s*-\s*Amazon\.com.*$/i, '').replace(/\s*\|.*$/i, '').trim(),
-            price: originalPrice || price,
-            dealPrice: originalPrice ? price : undefined,
-            hasDeal: !!originalPrice,
-            category: category || 'General',
-            store,
-            image: result.ogImage || result.image,
-          });
+            // Extract unit/quantity
+            const unitMatch = result.markdown?.match(/(\d+(?:\.\d+)?)\s*(kg|g|gm|ml|l|ltr|litre|piece|pcs|pack|dozen)/i);
+            const unit = unitMatch ? `${unitMatch[1]} ${unitMatch[2]}` : undefined;
+
+            if (result.title && price > 0) {
+              // Clean up the title
+              let cleanName = result.title
+                .replace(/\s*-\s*(?:Buy|Online|at|Best|Price).*$/i, '')
+                .replace(/\s*\|.*$/i, '')
+                .replace(/\s*–.*$/i, '')
+                .trim();
+
+              // Limit name length
+              if (cleanName.length > 60) {
+                cleanName = cleanName.substring(0, 60) + '...';
+              }
+
+              // Determine category from content
+              let detectedCategory = category || 'General';
+              const content = (result.title + ' ' + (result.markdown || '')).toLowerCase();
+              if (content.includes('fruit') || content.includes('mango') || content.includes('apple') || content.includes('banana')) {
+                detectedCategory = 'Fruits';
+              } else if (content.includes('vegetable') || content.includes('tomato') || content.includes('onion') || content.includes('potato')) {
+                detectedCategory = 'Vegetables';
+              } else if (content.includes('milk') || content.includes('dairy') || content.includes('paneer') || content.includes('curd') || content.includes('egg')) {
+                detectedCategory = 'Dairy & Eggs';
+              } else if (content.includes('chicken') || content.includes('mutton') || content.includes('meat')) {
+                detectedCategory = 'Meat & Poultry';
+              } else if (content.includes('fish') || content.includes('prawn') || content.includes('seafood')) {
+                detectedCategory = 'Seafood';
+              } else if (content.includes('rice') || content.includes('atta') || content.includes('dal') || content.includes('grain') || content.includes('flour')) {
+                detectedCategory = 'Grains & Pulses';
+              } else if (content.includes('spice') || content.includes('masala')) {
+                detectedCategory = 'Spices';
+              } else if (content.includes('snack') || content.includes('chips') || content.includes('biscuit')) {
+                detectedCategory = 'Snacks';
+              } else if (content.includes('beverage') || content.includes('juice') || content.includes('drink')) {
+                detectedCategory = 'Beverages';
+              }
+
+              allProducts.push({
+                name: cleanName,
+                price: originalPrice || price,
+                dealPrice: originalPrice && price < originalPrice ? price : undefined,
+                hasDeal: !!(originalPrice && price < originalPrice),
+                category: detectedCategory,
+                store: storeInfo.store,
+                image: result.ogImage || result.image,
+                rating,
+                unit,
+                description: result.description?.substring(0, 100),
+              });
+            }
+          }
         }
+      } catch (storeError) {
+        console.error(`Error fetching from ${storeInfo.store}:`, storeError);
+        // Continue with other stores
       }
     }
 
-    console.log(`Found ${products.length} products`);
+    // Remove duplicates based on name similarity
+    const uniqueProducts = allProducts.reduce((acc: GroceryProduct[], product) => {
+      const exists = acc.find(p => 
+        p.name.toLowerCase().includes(product.name.toLowerCase().substring(0, 20)) ||
+        product.name.toLowerCase().includes(p.name.toLowerCase().substring(0, 20))
+      );
+      if (!exists) {
+        acc.push(product);
+      }
+      return acc;
+    }, []);
+
+    console.log(`Found ${uniqueProducts.length} unique products from Indian stores`);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        products,
+        products: uniqueProducts.slice(0, 20), // Limit to 20 products
         source: 'live',
         updatedAt: new Date().toISOString(),
       }),

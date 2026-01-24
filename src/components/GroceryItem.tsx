@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ProductImage } from '@/components/ProductImage';
+import { formatPrice } from '@/lib/currency';
 import { cn } from '@/lib/utils';
 
 interface GroceryItemProps {
@@ -95,10 +96,10 @@ export function GroceryItemCard({ item, onToggle, onRemove, onUpdateQuantity }: 
               <div className="text-right">
                 {item.hasDeal && item.dealPrice && (
                   <p className="text-xs text-muted-foreground line-through">
-                    ${(item.price * item.quantity).toFixed(2)}
+                    {formatPrice(item.price * item.quantity)}
                   </p>
                 )}
-                <p className="font-bold text-lg">${totalPrice.toFixed(2)}</p>
+                <p className="font-bold text-lg">{formatPrice(totalPrice)}</p>
               </div>
               <Button
                 variant="ghost"

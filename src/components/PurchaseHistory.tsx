@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ProductImage } from '@/components/ProductImage';
 import { PurchaseHistory as PurchaseHistoryType } from '@/types/grocery';
+import { formatPrice } from '@/lib/currency';
 
 interface PurchaseHistoryProps {
   purchases: PurchaseHistoryType[];
@@ -45,7 +46,7 @@ export function PurchaseHistoryCard({ purchases }: PurchaseHistoryProps) {
         </div>
         <Badge variant="outline" className="gap-1">
           <TrendingUp className="h-3 w-3" />
-          ${thisMonthSpent.toFixed(2)} this month
+          {formatPrice(thisMonthSpent)} this month
         </Badge>
       </div>
 
@@ -71,7 +72,7 @@ export function PurchaseHistoryCard({ purchases }: PurchaseHistoryProps) {
                 </div>
               </div>
               <div className="text-right">
-                <p className="font-semibold text-sm">${(purchase.price * purchase.quantity).toFixed(2)}</p>
+                <p className="font-semibold text-sm">{formatPrice(purchase.price * purchase.quantity)}</p>
                 <p className="text-xs text-muted-foreground">×{purchase.quantity}</p>
               </div>
             </div>
@@ -82,7 +83,7 @@ export function PurchaseHistoryCard({ purchases }: PurchaseHistoryProps) {
       <div className="mt-4 pt-3 border-t">
         <div className="flex justify-between items-center text-sm">
           <span className="text-muted-foreground">Total spent (all time)</span>
-          <span className="font-bold text-lg">${totalSpent.toFixed(2)}</span>
+          <span className="font-bold text-lg">{formatPrice(totalSpent)}</span>
         </div>
       </div>
     </Card>
