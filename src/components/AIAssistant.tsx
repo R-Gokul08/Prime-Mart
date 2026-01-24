@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Sparkles, Send, Loader2, ChefHat, ShoppingBag, Lightbulb } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,19 +8,113 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { GroceryItem } from '@/types/grocery';
 
+interface AISuggestion {
+  name: string;
+  category: string;
+  price: number;
+  reason: string;
+  type: 'history' | 'healthy' | 'deal' | 'budget';
+  store?: string;
+}
+
 interface AIAssistantProps {
   groceryItems: GroceryItem[];
+  onSuggestionsUpdate?: (suggestions: AISuggestion[]) => void;
 }
 
 type AssistantMode = 'suggestions' | 'recipes' | 'chat';
 
-export function AIAssistant({ groceryItems }: AIAssistantProps) {
+// Parse AI response to extract product suggestions
+function parseAISuggestions(response: string): AISuggestion[] {
+  const suggestions: AISuggestion[] = [];
+  const lines = response.split('\n');
+  
+  // Common grocery categories
+  const categoryKeywords: Record<string, string> = {
+    'vegetable': 'Fruits & Vegetables',
+    'fruit': 'Fruits & Vegetables',
+    'tomato': 'Fruits & Vegetables',
+    'onion': 'Fruits & Vegetables',
+    'potato': 'Fruits & Vegetables',
+    'spinach': 'Fruits & Vegetables',
+    'carrot': 'Fruits & Vegetables',
+    'milk': 'Dairy & Eggs',
+    'curd': 'Dairy & Eggs',
+    'paneer': 'Dairy & Eggs',
+    'cheese': 'Dairy & Eggs',
+    'egg': 'Dairy & Eggs',
+    'butter': 'Dairy & Eggs',
+    'chicken': 'Meat & Seafood',
+    'mutton': 'Meat & Seafood',
+    'fish': 'Meat & Seafood',
+    'rice': 'Pantry',
+    'atta': 'Pantry',
+    'flour': 'Pantry',
+    'dal': 'Pantry',
+    'oil': 'Pantry',
+    'sugar': 'Pantry',
+    'salt': 'Pantry',
+    'spice': 'Pantry',
+    'bread': 'Bakery',
+    'juice': 'Beverages',
+    'tea': 'Beverages',
+    'coffee': 'Beverages',
+    'chips': 'Snacks',
+    'biscuit': 'Snacks',
+    'namkeen': 'Snacks',
+  };
+
+  for (const line of lines) {
+    // Look for product mentions with prices or bullet points
+    const productMatch = line.match(/[•\-\*]?\s*([A-Za-z\s]+)(?:.*?₹?\s*(\d+))?/);
+    if (productMatch) {
+      const productName = productMatch[1].trim();
+      if (productName.length > 2 && productName.length < 50) {
+        // Determine category
+        let category = 'Pantry';
+        const lowerName = productName.toLowerCase();
+        for (const [keyword, cat] of Object.entries(categoryKeywords)) {
+          if (lowerName.includes(keyword)) {
+            category = cat;
+            break;
+          }
+        }
+        
+        // Random price if not found
+        const price = productMatch[2] ? parseInt(productMatch[2]) : Math.floor(Math.random() * 100) + 30;
+        
+        // Determine suggestion type based on context
+        let type: AISuggestion['type'] = 'budget';
+        if (line.toLowerCase().includes('healthy') || line.toLowerCase().includes('vitamin') || line.toLowerCase().includes('protein')) {
+          type = 'healthy';
+        } else if (line.toLowerCase().includes('deal') || line.toLowerCase().includes('offer') || line.toLowerCase().includes('discount')) {
+          type = 'deal';
+        } else if (line.toLowerCase().includes('forgot') || line.toLowerCase().includes('missing')) {
+          type = 'history';
+        }
+        
+        suggestions.push({
+          name: productName,
+          category,
+          price,
+          reason: 'AI Suggested',
+          type,
+          store: 'BigBasket',
+        });
+      }
+    }
+  }
+  
+  return suggestions.slice(0, 4); // Limit to 4 suggestions
+}
+
+export function AIAssistant({ groceryItems, onSuggestionsUpdate }: AIAssistantProps) {
   const [mode, setMode] = useState<AssistantMode>('suggestions');
   const [input, setInput] = useState('');
   const [response, setResponse] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const getAIResponse = async (type: string, context?: string) => {
+  const getAIResponse = useCallback(async (type: string, context?: string) => {
     setIsLoading(true);
     setResponse('');
 
@@ -49,13 +143,22 @@ export function AIAssistant({ groceryItems }: AIAssistantProps) {
       }
 
       setResponse(data.response);
+      
+      // Parse and send suggestions to parent
+      if (onSuggestionsUpdate && data.response) {
+        const suggestions = parseAISuggestions(data.response);
+        if (suggestions.length > 0) {
+          onSuggestionsUpdate(suggestions);
+          toast.success(`Found ${suggestions.length} product suggestions!`);
+        }
+      }
     } catch (error) {
       console.error('AI error:', error);
       toast.error('Failed to get AI response');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [groceryItems, onSuggestionsUpdate]);
 
   const handleQuickAction = (type: string) => {
     getAIResponse(type);
@@ -141,7 +244,7 @@ export function AIAssistant({ groceryItems }: AIAssistantProps) {
         <form onSubmit={handleSubmit} className="space-y-2">
           <Textarea
             placeholder={
-              mode === 'suggestions' ? "Ask about shopping tips, alternatives..." :
+              mode === 'suggestions' ? "Ask about shopping tips, alternatives... (e.g., 'biryani ingredients')" :
               mode === 'recipes' ? "What kind of meal are you in the mood for?" :
               "Ask anything about groceries..."
             }

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { StatsCards } from '@/components/StatsCards';
@@ -33,6 +33,16 @@ import { Order } from '@/types/grocery';
 import { Scan, LogIn, LogOut } from 'lucide-react';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 
+// AI Suggestion type
+interface AISuggestion {
+  name: string;
+  category: string;
+  price: number;
+  reason: string;
+  type: 'history' | 'healthy' | 'deal' | 'budget';
+  store?: string;
+}
+
 const Index = () => {
   const navigate = useNavigate();
   const [showProfile, setShowProfile] = useState(false);
@@ -41,6 +51,7 @@ const Index = () => {
   const [showLens, setShowLens] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [user, setUser] = useState<SupabaseUser | null>(null);
+  const [aiSuggestions, setAISuggestions] = useState<AISuggestion[]>([]);
   const { isOnline } = useOfflineStatus();
 
   const {
@@ -56,6 +67,11 @@ const Index = () => {
     checkDuplicate,
     updateBudget,
   } = useGroceryStore();
+
+  // Callback for AI suggestions
+  const handleAISuggestions = useCallback((suggestions: AISuggestion[]) => {
+    setAISuggestions(suggestions);
+  }, []);
 
   const {
     profile,
@@ -335,9 +351,9 @@ const Index = () => {
             
             {/* Price Comparison - Above Smart Suggestions */}
             <PriceComparison />
-            <SmartSuggestions onAddItem={handleAddSuggestion} />
-            <AIAssistant groceryItems={items} />
-            <ExpiryReminders />
+            <SmartSuggestions onAddItem={handleAddSuggestion} aiSuggestions={aiSuggestions} />
+            <AIAssistant groceryItems={items} onSuggestionsUpdate={handleAISuggestions} />
+            <ExpiryReminders items={items} />
           </div>
         </div>
 

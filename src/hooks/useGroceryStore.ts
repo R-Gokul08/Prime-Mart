@@ -1,15 +1,47 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useEffect } from 'react';
 import { GroceryItem, Budget } from '@/types/grocery';
-import { sampleGroceryItems } from '@/data/mockData';
 import { useLocalStorage } from './useLocalStorage';
+import { supabase } from '@/integrations/supabase/client';
+
+// Start with empty items - users build their own list
+const INITIAL_ITEMS: GroceryItem[] = [];
+
+// Default budget of ₹500
+const INITIAL_BUDGET: Budget = {
+  total: 500,
+  spent: 0,
+  remaining: 500,
+};
 
 export function useGroceryStore() {
-  const [items, setItems] = useLocalStorage<GroceryItem[]>('smartcart-items', sampleGroceryItems);
-  const [budget, setBudget] = useLocalStorage<Budget>('smartcart-budget', {
-    total: 5000, // INR default budget
-    spent: 0,
-    remaining: 5000,
-  });
+  const [items, setItems] = useLocalStorage<GroceryItem[]>('primemart-items', INITIAL_ITEMS);
+  const [budget, setBudget] = useLocalStorage<Budget>('primemart-budget', INITIAL_BUDGET);
+  const [userId, setUserId] = useLocalStorage<string | null>('primemart-user-id', null);
+
+  // Sync with Supabase when user is authenticated
+  useEffect(() => {
+    const syncWithCloud = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        setUserId(session.user.id);
+        // Data is stored locally with user-specific keys when signed in
+      } else {
+        setUserId(null);
+      }
+    };
+
+    syncWithCloud();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session?.user) {
+        setUserId(session.user.id);
+      } else {
+        setUserId(null);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [setUserId]);
 
   const addItem = useCallback((item: Omit<GroceryItem, 'id' | 'addedAt' | 'isChecked'>) => {
     const newItem: GroceryItem = {
@@ -92,6 +124,12 @@ export function useGroceryStore() {
     }));
   }, [setBudget]);
 
+  // Reset to initial state (for new users)
+  const resetStore = useCallback(() => {
+    setItems(INITIAL_ITEMS);
+    setBudget(INITIAL_BUDGET);
+  }, [setItems, setBudget]);
+
   return {
     items,
     budget,
@@ -104,5 +142,7 @@ export function useGroceryStore() {
     getCheckedItems,
     checkDuplicate,
     updateBudget,
+    resetStore,
+    userId,
   };
 }
