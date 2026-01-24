@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { StatsCards } from '@/components/StatsCards';
 import { AddItemForm } from '@/components/AddItemForm';
@@ -13,22 +14,49 @@ import { CheckoutModal } from '@/components/CheckoutModal';
 import { QuickAddProduct } from '@/components/QuickAddProduct';
 import { PurchaseHistoryCard } from '@/components/PurchaseHistory';
 import { OrderTrackingBadge, OrderTracking } from '@/components/OrderTracking';
+import { AIAssistant } from '@/components/AIAssistant';
+import { GoogleLens } from '@/components/GoogleLens';
 import { useGroceryStore } from '@/hooks/useGroceryStore';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useInventory } from '@/hooks/useInventory';
 import { useOrders } from '@/hooks/useOrders';
 import { useOfflineStatus } from '@/hooks/useOfflineStatus';
+import { supabase } from '@/integrations/supabase/client';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { Order } from '@/types/grocery';
+import { Scan, LogIn, LogOut, User } from 'lucide-react';
+import { User as SupabaseUser } from '@supabase/supabase-js';
 
 const Index = () => {
+  const navigate = useNavigate();
   const [showProfile, setShowProfile] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
   const [showOrderTracking, setShowOrderTracking] = useState(false);
+  const [showLens, setShowLens] = useState(false);
+  const [user, setUser] = useState<SupabaseUser | null>(null);
   const { isOnline } = useOfflineStatus();
+
+  // Auth state listener
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    toast.success('Signed out successfully');
+  };
   
   const {
     items,
@@ -155,12 +183,51 @@ const Index = () => {
         {/* Hero Section */}
         <section className="relative overflow-hidden rounded-3xl gradient-hero p-8 text-primary-foreground">
           <div className="relative z-10">
-            <h1 className="text-3xl md:text-4xl font-extrabold mb-2">
-              Shop Smarter, Save More 🛒
-            </h1>
+            <div className="flex items-center justify-between mb-2">
+              <h1 className="text-3xl md:text-4xl font-extrabold">
+                Shop Smarter, Save More 🛒
+              </h1>
+              {user ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm opacity-80 hidden sm:inline">
+                    {user.email}
+                  </span>
+                  <Button 
+                    variant="secondary" 
+                    size="sm" 
+                    onClick={handleSignOut}
+                    className="gap-2"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Sign Out
+                  </Button>
+                </div>
+              ) : (
+                <Button 
+                  variant="secondary" 
+                  size="sm" 
+                  onClick={() => navigate('/auth')}
+                  className="gap-2"
+                >
+                  <LogIn className="h-4 w-4" />
+                  Sign In
+                </Button>
+              )}
+            </div>
             <p className="text-primary-foreground/80 text-lg max-w-lg">
               AI-powered grocery planning that helps you save money, reduce waste, and eat healthier.
             </p>
+            <div className="flex gap-2 mt-4">
+              <Button 
+                variant="secondary" 
+                size="sm" 
+                onClick={() => setShowLens(true)}
+                className="gap-2"
+              >
+                <Scan className="h-4 w-4" />
+                Scan Product
+              </Button>
+            </div>
           </div>
           <div className="absolute right-0 top-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-20 -mt-20" />
           <div className="absolute right-20 bottom-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mb-10" />
@@ -232,11 +299,26 @@ const Index = () => {
               />
             )}
             
+            <AIAssistant groceryItems={items} />
             <SmartSuggestions onAddItem={handleAddSuggestion} />
             <ExpiryReminders />
             <PriceComparison />
           </div>
         </div>
+
+        {/* Google Lens Scanner */}
+        <GoogleLens 
+          open={showLens} 
+          onOpenChange={setShowLens}
+          onAddItem={(item) => addItem({
+            ...item,
+            quantity: 1,
+            unit: 'pcs',
+            isHealthy: false,
+            hasDeal: false,
+            store: 'FreshMart',
+          })}
+        />
 
         {/* Checkout Modal */}
         <CheckoutModal
