@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.scrape-grocery-products]
 verify_jwt = false
+
+[functions.price-comparison]
+verify_jwt = false

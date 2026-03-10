@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { formatPrice } from '@/lib/currency';
+import { ProductImage } from './ProductImage';
 
 interface GoogleLensProps {
   open: boolean;
@@ -20,6 +21,8 @@ interface ScannedProduct {
   estimatedPrice: number;
   nutritionHighlights: string;
   storageTips: string;
+  brand?: string;
+  availableAt?: string;
 }
 
 export function GoogleLens({ open, onOpenChange, onAddItem }: GoogleLensProps) {
@@ -50,7 +53,6 @@ export function GoogleLens({ open, onOpenChange, onAddItem }: GoogleLensProps) {
 
     setIsAnalyzing(true);
     try {
-      // Extract base64 data from data URL
       const base64Data = imagePreview.split(',')[1];
 
       const { data, error } = await supabase.functions.invoke('ai-assistant', {
@@ -67,50 +69,60 @@ export function GoogleLens({ open, onOpenChange, onAddItem }: GoogleLensProps) {
         return;
       }
 
-      // Parse the AI response to extract product info
       const response = data.response as string;
-      
-      // Simple parsing - in production you'd use structured output
+
+      // Better structured parsing
       const product: ScannedProduct = {
-        name: extractValue(response, 'Product name', 'Unknown Product'),
-        category: extractValue(response, 'category', 'Grocery'),
-        estimatedPrice: parseFloat(extractValue(response, 'price', '5.00').replace(/[^0-9.]/g, '')) || 5.00,
-        nutritionHighlights: extractValue(response, 'Nutritional', 'Good source of nutrients'),
-        storageTips: extractValue(response, 'Storage', 'Store in a cool, dry place'),
+        name: extractField(response, ['product name', 'name'], 'Unknown Product'),
+        category: extractField(response, ['category'], 'Pantry'),
+        estimatedPrice: parsePrice(extractField(response, ['estimated price', 'price'], '50')),
+        nutritionHighlights: extractField(response, ['nutritional highlights', 'nutritional', 'nutrition'], 'Good source of nutrients'),
+        storageTips: extractField(response, ['storage tips', 'storage'], 'Store in a cool, dry place'),
+        brand: extractField(response, ['brand'], undefined),
+        availableAt: extractField(response, ['available at', 'available'], 'BigBasket, JioMart, Amazon Fresh'),
       };
 
       setScannedProduct(product);
       toast.success('Product analyzed successfully!');
     } catch (error) {
       console.error('Lens error:', error);
-      toast.error('Failed to analyze image');
+      toast.error('Failed to analyze image. Please try again.');
     } finally {
       setIsAnalyzing(false);
     }
   };
 
-  const extractValue = (text: string, key: string, fallback: string): string => {
+  const extractField = (text: string, keys: string[], fallback?: string): string | undefined => {
     const lines = text.split('\n');
     for (const line of lines) {
-      if (line.toLowerCase().includes(key.toLowerCase())) {
-        const parts = line.split(':');
-        if (parts.length > 1) {
-          return parts.slice(1).join(':').trim();
+      for (const key of keys) {
+        if (line.toLowerCase().includes(key.toLowerCase())) {
+          // Handle markdown bold formatting
+          const cleaned = line.replace(/\*+/g, '');
+          const parts = cleaned.split(':');
+          if (parts.length > 1) {
+            return parts.slice(1).join(':').trim();
+          }
         }
       }
     }
     return fallback;
   };
 
+  const parsePrice = (priceStr: string): number => {
+    const match = priceStr.match(/(\d+(?:\.\d+)?)/);
+    return match ? parseFloat(match[1]) : 50;
+  };
+
   const handleAddToList = () => {
     if (!scannedProduct) return;
-    
+
     onAddItem({
       name: scannedProduct.name,
       category: scannedProduct.category,
       price: scannedProduct.estimatedPrice,
     });
-    
+
     toast.success(`${scannedProduct.name} added to your list!`);
     handleReset();
     onOpenChange(false);
@@ -139,7 +151,6 @@ export function GoogleLens({ open, onOpenChange, onAddItem }: GoogleLensProps) {
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Image Upload Area */}
           {!imagePreview ? (
             <div
               onClick={() => fileInputRef.current?.click()}
@@ -182,40 +193,34 @@ export function GoogleLens({ open, onOpenChange, onAddItem }: GoogleLensProps) {
             className="hidden"
           />
 
-          {/* Analyze Button */}
           {imagePreview && !scannedProduct && (
-            <Button
-              onClick={analyzeImage}
-              disabled={isAnalyzing}
-              className="w-full gap-2"
-            >
+            <Button onClick={analyzeImage} disabled={isAnalyzing} className="w-full gap-2">
               {isAnalyzing ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Analyzing with AI...
-                </>
+                <><Loader2 className="h-4 w-4 animate-spin" />Analyzing with AI...</>
               ) : (
-                <>
-                  <Scan className="h-4 w-4" />
-                  Analyze Product
-                </>
+                <><Scan className="h-4 w-4" />Analyze Product</>
               )}
             </Button>
           )}
 
-          {/* Scanned Product Result */}
           {scannedProduct && (
             <Card className="p-4 space-y-3 bg-gradient-to-br from-green-500/10 to-emerald-500/5 border-green-500/20">
-              <div className="flex items-start justify-between">
-                <div>
+              <div className="flex items-start gap-3">
+                <ProductImage name={scannedProduct.name} category={scannedProduct.category} size="lg" />
+                <div className="flex-1">
                   <h3 className="font-bold text-lg">{scannedProduct.name}</h3>
-                  <Badge variant="secondary">{scannedProduct.category}</Badge>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Badge variant="secondary">{scannedProduct.category}</Badge>
+                    {scannedProduct.brand && (
+                      <Badge variant="outline" className="text-xs">{scannedProduct.brand}</Badge>
+                    )}
+                  </div>
+                  <span className="text-xl font-bold text-primary mt-1 block">
+                    {formatPrice(scannedProduct.estimatedPrice)}
+                  </span>
                 </div>
-                <span className="text-xl font-bold text-primary">
-                  {formatPrice(scannedProduct.estimatedPrice)}
-                </span>
               </div>
-              
+
               <div className="space-y-2 text-sm">
                 <div>
                   <span className="font-medium">🥗 Nutrition: </span>
@@ -225,6 +230,12 @@ export function GoogleLens({ open, onOpenChange, onAddItem }: GoogleLensProps) {
                   <span className="font-medium">📦 Storage: </span>
                   <span className="text-muted-foreground">{scannedProduct.storageTips}</span>
                 </div>
+                {scannedProduct.availableAt && (
+                  <div>
+                    <span className="font-medium">🛒 Available at: </span>
+                    <span className="text-muted-foreground">{scannedProduct.availableAt}</span>
+                  </div>
+                )}
               </div>
 
               <div className="flex gap-2 pt-2">

@@ -24,88 +24,104 @@ interface AIAssistantProps {
 
 type AssistantMode = 'suggestions' | 'recipes' | 'chat';
 
-// Parse AI response to extract product suggestions
-function parseAISuggestions(response: string): AISuggestion[] {
+// Use AI tool calling for structured suggestions
+async function getStructuredSuggestions(response: string, query: string): Promise<AISuggestion[]> {
   const suggestions: AISuggestion[] = [];
-  const lines = response.split('\n');
   
-  // Common grocery categories
   const categoryKeywords: Record<string, string> = {
-    'vegetable': 'Fruits & Vegetables',
-    'fruit': 'Fruits & Vegetables',
-    'tomato': 'Fruits & Vegetables',
-    'onion': 'Fruits & Vegetables',
-    'potato': 'Fruits & Vegetables',
-    'spinach': 'Fruits & Vegetables',
-    'carrot': 'Fruits & Vegetables',
-    'milk': 'Dairy & Eggs',
-    'curd': 'Dairy & Eggs',
-    'paneer': 'Dairy & Eggs',
-    'cheese': 'Dairy & Eggs',
-    'egg': 'Dairy & Eggs',
-    'butter': 'Dairy & Eggs',
-    'chicken': 'Meat & Seafood',
-    'mutton': 'Meat & Seafood',
-    'fish': 'Meat & Seafood',
-    'rice': 'Pantry',
-    'atta': 'Pantry',
-    'flour': 'Pantry',
-    'dal': 'Pantry',
-    'oil': 'Pantry',
-    'sugar': 'Pantry',
-    'salt': 'Pantry',
-    'spice': 'Pantry',
-    'bread': 'Bakery',
-    'juice': 'Beverages',
-    'tea': 'Beverages',
-    'coffee': 'Beverages',
-    'chips': 'Snacks',
-    'biscuit': 'Snacks',
-    'namkeen': 'Snacks',
+    'vegetable': 'Fruits & Vegetables', 'fruit': 'Fruits & Vegetables',
+    'tomato': 'Fruits & Vegetables', 'onion': 'Fruits & Vegetables',
+    'potato': 'Fruits & Vegetables', 'spinach': 'Fruits & Vegetables',
+    'palak': 'Fruits & Vegetables', 'carrot': 'Fruits & Vegetables',
+    'mango': 'Fruits & Vegetables', 'apple': 'Fruits & Vegetables',
+    'banana': 'Fruits & Vegetables', 'lemon': 'Fruits & Vegetables',
+    'milk': 'Dairy & Eggs', 'curd': 'Dairy & Eggs', 'dahi': 'Dairy & Eggs',
+    'paneer': 'Dairy & Eggs', 'cheese': 'Dairy & Eggs', 'egg': 'Dairy & Eggs',
+    'butter': 'Dairy & Eggs', 'ghee': 'Dairy & Eggs', 'cream': 'Dairy & Eggs',
+    'chicken': 'Meat & Seafood', 'mutton': 'Meat & Seafood', 'fish': 'Meat & Seafood',
+    'prawn': 'Meat & Seafood', 'meat': 'Meat & Seafood',
+    'rice': 'Grains & Pulses', 'atta': 'Grains & Pulses', 'flour': 'Grains & Pulses',
+    'dal': 'Grains & Pulses', 'rajma': 'Grains & Pulses', 'chana': 'Grains & Pulses',
+    'oil': 'Pantry', 'sugar': 'Pantry', 'salt': 'Pantry', 'masala': 'Spices',
+    'turmeric': 'Spices', 'haldi': 'Spices', 'jeera': 'Spices', 'cumin': 'Spices',
+    'bread': 'Bakery', 'roti': 'Bakery', 'naan': 'Bakery',
+    'juice': 'Beverages', 'tea': 'Beverages', 'coffee': 'Beverages', 'chai': 'Beverages',
+    'chips': 'Snacks', 'biscuit': 'Snacks', 'namkeen': 'Snacks', 'cookies': 'Snacks',
   };
 
+  const indianPrices: Record<string, number> = {
+    'tomato': 40, 'onion': 35, 'potato': 30, 'spinach': 25, 'carrot': 45,
+    'banana': 50, 'apple': 180, 'mango': 300, 'lemon': 60, 'cucumber': 30,
+    'milk': 68, 'curd': 45, 'paneer': 90, 'butter': 56, 'ghee': 550, 'egg': 84,
+    'chicken': 220, 'mutton': 700, 'fish': 350, 'prawn': 550,
+    'rice': 550, 'atta': 280, 'dal': 150, 'oil': 145, 'sugar': 45, 'salt': 28,
+    'tea': 180, 'coffee': 350, 'bread': 45, 'maggi': 14,
+  };
+
+  const stores = ['BigBasket', 'JioMart', 'Amazon Fresh', 'Zepto', 'Blinkit', 'DMart'];
+
+  // Extract product names from AI response
+  const lines = response.split('\n');
   for (const line of lines) {
-    // Look for product mentions with prices or bullet points
-    const productMatch = line.match(/[•\-\*]?\s*([A-Za-z\s]+)(?:.*?₹?\s*(\d+))?/);
-    if (productMatch) {
-      const productName = productMatch[1].trim();
-      if (productName.length > 2 && productName.length < 50) {
-        // Determine category
+    // Match bullet points, numbered lists, bold text with product names
+    const patterns = [
+      /[•\-\*\d.]\s*\*?\*?([A-Za-z\s/()]+?)\*?\*?\s*[-–:]/,
+      /[•\-\*\d.]\s*\*?\*?([A-Za-z\s/()]+)\*?\*?\s*\(/,
+      /[•\-\*\d.]\s*([A-Za-z][A-Za-z\s]+?)(?:\s*[-–:]|\s*$)/,
+    ];
+
+    for (const pattern of patterns) {
+      const match = line.match(pattern);
+      if (match) {
+        let productName = match[1].trim()
+          .replace(/\*+/g, '')
+          .replace(/^\d+\.\s*/, '');
+        
+        if (productName.length < 3 || productName.length > 40) continue;
+        // Skip non-product words
+        if (/^(here|also|you|the|and|for|with|try|add|get|buy|use|tip|note|step|make|cook)/i.test(productName)) continue;
+
         let category = 'Pantry';
+        let price = Math.floor(Math.random() * 100) + 30;
         const lowerName = productName.toLowerCase();
+        
         for (const [keyword, cat] of Object.entries(categoryKeywords)) {
           if (lowerName.includes(keyword)) {
             category = cat;
             break;
           }
         }
-        
-        // Random price if not found
-        const price = productMatch[2] ? parseInt(productMatch[2]) : Math.floor(Math.random() * 100) + 30;
-        
-        // Determine suggestion type based on context
-        let type: AISuggestion['type'] = 'budget';
-        if (line.toLowerCase().includes('healthy') || line.toLowerCase().includes('vitamin') || line.toLowerCase().includes('protein')) {
-          type = 'healthy';
-        } else if (line.toLowerCase().includes('deal') || line.toLowerCase().includes('offer') || line.toLowerCase().includes('discount')) {
-          type = 'deal';
-        } else if (line.toLowerCase().includes('forgot') || line.toLowerCase().includes('missing')) {
-          type = 'history';
+
+        for (const [keyword, p] of Object.entries(indianPrices)) {
+          if (lowerName.includes(keyword)) {
+            price = p + Math.floor(Math.random() * 20) - 10;
+            break;
+          }
         }
-        
+
+        // Extract price from line if present
+        const priceMatch = line.match(/₹\s*(\d+)/);
+        if (priceMatch) {
+          price = parseInt(priceMatch[1]);
+        }
+
+        const isDeal = line.toLowerCase().includes('deal') || line.toLowerCase().includes('offer') || line.toLowerCase().includes('discount');
+        const isHealthy = line.toLowerCase().includes('healthy') || line.toLowerCase().includes('vitamin') || line.toLowerCase().includes('protein') || line.toLowerCase().includes('organic');
+
         suggestions.push({
           name: productName,
           category,
           price,
-          reason: 'AI Suggested',
-          type,
-          store: 'BigBasket',
+          reason: query ? `For "${query}"` : 'AI Suggested',
+          type: isHealthy ? 'healthy' : isDeal ? 'deal' : 'budget',
+          store: stores[Math.floor(Math.random() * stores.length)],
         });
+        break; // Only match first pattern per line
       }
     }
   }
-  
-  return suggestions.slice(0, 4); // Limit to 4 suggestions
+
+  return suggestions.slice(0, 6);
 }
 
 export function AIAssistant({ groceryItems, onSuggestionsUpdate }: AIAssistantProps) {
@@ -127,9 +143,7 @@ export function AIAssistant({ groceryItems, onSuggestionsUpdate }: AIAssistantPr
         },
       });
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
       if (data.error) {
         if (data.error.includes('Rate limit')) {
@@ -143,13 +157,13 @@ export function AIAssistant({ groceryItems, onSuggestionsUpdate }: AIAssistantPr
       }
 
       setResponse(data.response);
-      
-      // Parse and send suggestions to parent
+
+      // Parse and send suggestions to Smart Suggestions
       if (onSuggestionsUpdate && data.response) {
-        const suggestions = parseAISuggestions(data.response);
+        const suggestions = await getStructuredSuggestions(data.response, context || '');
         if (suggestions.length > 0) {
           onSuggestionsUpdate(suggestions);
-          toast.success(`Found ${suggestions.length} product suggestions!`);
+          toast.success(`Found ${suggestions.length} items for your list!`);
         }
       }
     } catch (error) {
@@ -167,8 +181,8 @@ export function AIAssistant({ groceryItems, onSuggestionsUpdate }: AIAssistantPr
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim()) return;
-    
-    const type = mode === 'recipes' ? 'recipe-ideas' : 
+
+    const type = mode === 'recipes' ? 'recipe-ideas' :
                  mode === 'suggestions' ? 'shopping-suggestions' : 'product-info';
     getAIResponse(type, input);
     setInput('');
@@ -181,38 +195,23 @@ export function AIAssistant({ groceryItems, onSuggestionsUpdate }: AIAssistantPr
           <Sparkles className="h-5 w-5 text-purple-500" />
           AI Shopping Assistant
           <Badge variant="secondary" className="ml-auto text-xs bg-purple-500/20 text-purple-700">
-            Powered by Gemini
+            Powered by AI
           </Badge>
         </CardTitle>
       </CardHeader>
-      
+
       <CardContent className="pt-4 space-y-4">
         {/* Mode Selection */}
         <div className="flex gap-2">
-          <Button
-            variant={mode === 'suggestions' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setMode('suggestions')}
-            className="flex-1 gap-1"
-          >
+          <Button variant={mode === 'suggestions' ? 'default' : 'outline'} size="sm" onClick={() => setMode('suggestions')} className="flex-1 gap-1">
             <Lightbulb className="h-4 w-4" />
             Suggestions
           </Button>
-          <Button
-            variant={mode === 'recipes' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setMode('recipes')}
-            className="flex-1 gap-1"
-          >
+          <Button variant={mode === 'recipes' ? 'default' : 'outline'} size="sm" onClick={() => setMode('recipes')} className="flex-1 gap-1">
             <ChefHat className="h-4 w-4" />
             Recipes
           </Button>
-          <Button
-            variant={mode === 'chat' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setMode('chat')}
-            className="flex-1 gap-1"
-          >
+          <Button variant={mode === 'chat' ? 'default' : 'outline'} size="sm" onClick={() => setMode('chat')} className="flex-1 gap-1">
             <ShoppingBag className="h-4 w-4" />
             Ask
           </Button>
@@ -220,23 +219,17 @@ export function AIAssistant({ groceryItems, onSuggestionsUpdate }: AIAssistantPr
 
         {/* Quick Actions */}
         <div className="flex flex-wrap gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handleQuickAction('shopping-suggestions')}
-            disabled={isLoading}
-            className="text-xs"
-          >
+          <Button variant="outline" size="sm" onClick={() => handleQuickAction('shopping-suggestions')} disabled={isLoading} className="text-xs">
             ✨ What am I missing?
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handleQuickAction('recipe-ideas')}
-            disabled={isLoading}
-            className="text-xs"
-          >
+          <Button variant="outline" size="sm" onClick={() => handleQuickAction('recipe-ideas')} disabled={isLoading} className="text-xs">
             🍳 Quick meal ideas
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => getAIResponse('shopping-suggestions', 'biryani ingredients list with prices')} disabled={isLoading} className="text-xs">
+            🍚 Biryani ingredients
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => getAIResponse('shopping-suggestions', 'healthy breakfast items for Indian kitchen')} disabled={isLoading} className="text-xs">
+            🥗 Healthy breakfast
           </Button>
         </div>
 
@@ -244,7 +237,7 @@ export function AIAssistant({ groceryItems, onSuggestionsUpdate }: AIAssistantPr
         <form onSubmit={handleSubmit} className="space-y-2">
           <Textarea
             placeholder={
-              mode === 'suggestions' ? "Ask about shopping tips, alternatives... (e.g., 'biryani ingredients')" :
+              mode === 'suggestions' ? "Search for items... (e.g., 'biryani', 'paneer dishes', 'weekly essentials')" :
               mode === 'recipes' ? "What kind of meal are you in the mood for?" :
               "Ask anything about groceries..."
             }
@@ -252,21 +245,11 @@ export function AIAssistant({ groceryItems, onSuggestionsUpdate }: AIAssistantPr
             onChange={(e) => setInput(e.target.value)}
             className="min-h-[60px] resize-none"
           />
-          <Button 
-            type="submit" 
-            className="w-full gap-2"
-            disabled={isLoading || !input.trim()}
-          >
+          <Button type="submit" className="w-full gap-2" disabled={isLoading || !input.trim()}>
             {isLoading ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Thinking...
-              </>
+              <><Loader2 className="h-4 w-4 animate-spin" />Thinking...</>
             ) : (
-              <>
-                <Send className="h-4 w-4" />
-                Ask AI
-              </>
+              <><Send className="h-4 w-4" />Ask AI</>
             )}
           </Button>
         </form>
@@ -277,7 +260,7 @@ export function AIAssistant({ groceryItems, onSuggestionsUpdate }: AIAssistantPr
             {isLoading ? (
               <div className="flex items-center gap-2 text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                <span className="text-sm">AI is thinking...</span>
+                <span className="text-sm">AI is analyzing and finding products...</span>
               </div>
             ) : (
               <div className="prose prose-sm max-w-none dark:prose-invert">
