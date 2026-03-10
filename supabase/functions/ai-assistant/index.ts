@@ -30,48 +30,68 @@ serve(async (req) => {
 
     switch (type) {
       case 'shopping-suggestions':
-        systemPrompt = `You are a smart grocery shopping assistant. Analyze the user's shopping list and provide helpful suggestions for:
-- Items they might have forgotten
-- Healthier alternatives
-- Budget-saving tips
-- Meal ideas based on their items
-Keep responses concise and actionable. Use emojis to make it friendly.`;
-        userPrompt = `Here's my current shopping list: ${groceryItems?.join(', ') || 'empty'}. ${context || 'Give me smart suggestions.'}`;
+        systemPrompt = `You are an expert Indian grocery shopping assistant. When the user mentions a dish, recipe, or food category, list ALL the specific grocery items needed with realistic Indian market prices in ₹.
+
+Format each item as a bullet point like:
+• **Item Name** - ₹Price (brief note)
+
+For example, if user asks about "biryani":
+• **Basmati Rice** - ₹120/kg (India Gate or Daawat)
+• **Chicken** - ₹220/kg (fresh, bone-in)
+• **Onions** - ₹35/kg
+• **Tomatoes** - ₹40/kg
+• **Yogurt/Curd** - ₹45/500ml
+• **Ginger-Garlic Paste** - ₹55
+• **Biryani Masala** - ₹45/pack (Everest or MDH)
+• **Green Chillies** - ₹20/100g
+• **Mint Leaves** - ₹10/bunch
+• **Coriander** - ₹10/bunch
+• **Ghee** - ₹550/ltr (Amul)
+• **Saffron** - ₹150/1g
+
+Always use realistic 2024-2025 Indian prices. Include brand names when relevant (Amul, Tata, Fortune, Aashirvaad, etc).
+Keep responses helpful with cooking tips.`;
+        userPrompt = `Here's my current shopping list: ${groceryItems?.join(', ') || 'empty'}. ${context || 'Give me smart suggestions for Indian cooking.'}`;
         break;
 
       case 'recipe-ideas':
-        systemPrompt = `You are a creative chef assistant. Based on the ingredients provided, suggest quick and delicious recipes. 
+        systemPrompt = `You are a creative Indian chef assistant. Based on ingredients provided, suggest quick and delicious Indian recipes.
 Include:
 - Recipe name with emoji
 - Cooking time
 - Brief instructions (3-4 steps max)
-- Any additional ingredients needed`;
-        userPrompt = `Suggest recipes I can make with these ingredients: ${groceryItems?.join(', ') || context || 'general pantry items'}`;
+- Any additional ingredients needed with prices in ₹
+List the missing ingredients as bullet points with • **Item** - ₹Price format.`;
+        userPrompt = `Suggest Indian recipes I can make with these ingredients: ${groceryItems?.join(', ') || context || 'general pantry items'}`;
         break;
 
       case 'product-info':
-        systemPrompt = `You are a nutrition and product expert. Provide helpful information about grocery products including:
+        systemPrompt = `You are a nutrition and product expert for the Indian market. Provide helpful information about grocery products including:
 - Nutritional benefits
+- Best Indian brands and their prices in ₹
 - Storage tips
-- Best uses
 - Quality indicators when buying
+Format product recommendations as: • **Product Name** - ₹Price (brand)
 Keep it brief and practical.`;
-        userPrompt = context || 'Tell me about common grocery products';
+        userPrompt = context || 'Tell me about common Indian grocery products';
         break;
 
       case 'lens-analyze':
-        systemPrompt = `You are analyzing a grocery product image. Identify:
-1. Product name and type
-2. Estimated category (produce, dairy, meat, etc.)
-3. Approximate price range
-4. Nutritional highlights
-5. Storage recommendations
-Format as a structured response that can be used to add the item to a shopping list.`;
-        userPrompt = "Analyze this grocery product image and provide details.";
+        systemPrompt = `You are analyzing a grocery product image from India. Identify and provide:
+1. **Product name**: (exact product name)
+2. **Category**: (one of: Fruits & Vegetables, Dairy & Eggs, Meat & Seafood, Bakery, Pantry, Beverages, Snacks, Grains & Pulses, Spices)
+3. **Estimated price**: ₹XX (realistic Indian market price)
+4. **Nutritional highlights**: Brief nutrition info
+5. **Storage tips**: How to store it
+6. **Brand**: If identifiable
+7. **Available at**: BigBasket, JioMart, Amazon Fresh, Zepto, Blinkit
+
+Use the exact format above with colons. The price MUST be a realistic Indian market price.`;
+        userPrompt = "Analyze this grocery product image and provide structured details for the Indian market.";
         break;
 
       default:
-        systemPrompt = "You are a helpful grocery shopping assistant.";
+        systemPrompt = "You are a helpful Indian grocery shopping assistant. Always mention prices in ₹ (INR).";
         userPrompt = context || "Help me with grocery shopping.";
     }
 
@@ -79,7 +99,6 @@ Format as a structured response that can be used to add the item to a shopping l
       { role: "system", content: systemPrompt },
     ];
 
-    // Handle image input for lens feature
     if (type === 'lens-analyze' && imageBase64) {
       messages.push({
         role: "user",
@@ -97,6 +116,8 @@ Format as a structured response that can be used to add the item to a shopping l
       messages.push({ role: "user", content: userPrompt });
     }
 
+    const model = type === 'lens-analyze' ? 'google/gemini-2.5-flash' : 'google/gemini-3-flash-preview';
+
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -104,7 +125,7 @@ Format as a structured response that can be used to add the item to a shopping l
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model,
         messages,
         stream: false,
       }),
