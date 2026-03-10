@@ -9,6 +9,10 @@ export const categories: Category[] = [
   { id: '6', name: 'Frozen', icon: '🧊', color: 'bg-cyan-100' },
   { id: '7', name: 'Beverages', icon: '🧃', color: 'bg-purple-100' },
   { id: '8', name: 'Snacks', icon: '🍿', color: 'bg-yellow-100' },
+  { id: '9', name: 'Grains & Pulses', icon: '🌾', color: 'bg-amber-100' },
+  { id: '10', name: 'Spices', icon: '🌶️', color: 'bg-red-100' },
+  { id: '11', name: 'Personal Care', icon: '🧴', color: 'bg-pink-100' },
+  { id: '12', name: 'Household', icon: '🏠', color: 'bg-slate-100' },
 ];
 
 export const stores: Store[] = [
@@ -18,6 +22,8 @@ export const stores: Store[] = [
   { id: '4', name: 'Zepto' },
   { id: '5', name: 'Blinkit' },
   { id: '6', name: 'DMart' },
+  { id: '7', name: 'Flipkart Grocery' },
+  { id: '8', name: 'Swiggy Instamart' },
 ];
 
 // Empty initial items - users build their own list
@@ -85,7 +91,7 @@ export const smartSuggestions: SmartSuggestion[] = [
     item: {
       id: 'sug-4',
       name: 'Toor Dal',
-      category: 'Pantry',
+      category: 'Grains & Pulses',
       quantity: 1,
       unit: 'kg',
       price: 150,
@@ -98,10 +104,50 @@ export const smartSuggestions: SmartSuggestion[] = [
     reason: 'Budget-friendly protein',
     type: 'budget',
   },
+  {
+    id: '5',
+    item: {
+      id: 'sug-5',
+      name: 'Amul Paneer 200g',
+      category: 'Dairy & Eggs',
+      quantity: 1,
+      unit: 'pack',
+      price: 90,
+      isHealthy: true,
+      hasDeal: true,
+      dealPrice: 78,
+      store: 'Blinkit',
+      isChecked: false,
+      addedAt: new Date(),
+    },
+    reason: 'Frequently bought together',
+    type: 'history',
+  },
+  {
+    id: '6',
+    item: {
+      id: 'sug-6',
+      name: 'Basmati Rice 5kg',
+      category: 'Grains & Pulses',
+      quantity: 1,
+      unit: 'bag',
+      price: 450,
+      isHealthy: true,
+      hasDeal: true,
+      dealPrice: 395,
+      store: 'DMart',
+      isChecked: false,
+      addedAt: new Date(),
+    },
+    reason: '12% off — stock up!',
+    type: 'deal',
+  },
 ];
 
 export const expiringItems = [
   { name: 'Milk', daysLeft: 2, icon: '🥛' },
   { name: 'Coriander', daysLeft: 3, icon: '🌿' },
   { name: 'Chicken', daysLeft: 1, icon: '🍗' },
+  { name: 'Curd', daysLeft: 2, icon: '🥣' },
+  { name: 'Bread', daysLeft: 4, icon: '🍞' },
 ];

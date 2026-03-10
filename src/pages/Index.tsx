@@ -33,7 +33,6 @@ import { Order } from '@/types/grocery';
 import { Scan, LogIn, LogOut } from 'lucide-react';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 
-// AI Suggestion type
 interface AISuggestion {
   name: string;
   category: string;
@@ -68,7 +67,6 @@ const Index = () => {
     updateBudget,
   } = useGroceryStore();
 
-  // Callback for AI suggestions
   const handleAISuggestions = useCallback((suggestions: AISuggestion[]) => {
     setAISuggestions(suggestions);
   }, []);
@@ -80,16 +78,13 @@ const Index = () => {
     toggleFavoriteBrand,
   } = useUserProfile();
 
-  // Auth state listener - sync with profile
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null);
-      
-      // Sync user profile with auth data when signed in
       if (session?.user) {
         setTimeout(() => {
           updateProfile({
-            name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || '',
+            name: session.user.user_metadata?.full_name || session.user.user_metadata?.name || session.user.email?.split('@')[0] || '',
             email: session.user.email || '',
           });
         }, 0);
@@ -98,11 +93,9 @@ const Index = () => {
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
-      
-      // Initial sync
       if (session?.user) {
         updateProfile({
-          name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || '',
+          name: session.user.user_metadata?.full_name || session.user.user_metadata?.name || session.user.email?.split('@')[0] || '',
           email: session.user.email || '',
         });
       }
@@ -127,11 +120,7 @@ const Index = () => {
     removeFromInventory,
   } = useInventory();
 
-  const {
-    createOrder,
-    getActiveOrder,
-  } = useOrders();
-
+  const { createOrder, getActiveOrder } = useOrders();
   const activeOrder = getActiveOrder();
 
   const handleAddSuggestion = (item: any) => {
@@ -146,19 +135,35 @@ const Index = () => {
       dealPrice: item.dealPrice,
       store: item.store,
     });
+    toast.success(`${item.name} added to list!`);
+  };
+
+  const handleAddFromHeader = (item: any) => {
+    addItem({
+      name: item.name,
+      category: item.category,
+      quantity: item.quantity || 1,
+      unit: item.unit || 'pcs',
+      price: item.price,
+      isHealthy: item.isHealthy || false,
+      hasDeal: item.hasDeal || false,
+      store: item.store || 'BigBasket',
+    });
+    toast.success(`${item.name} added to list!`);
+  };
+
+  const handleHeaderSearch = (query: string) => {
+    toast.info(`Searching for "${query}" across online stores...`);
   };
 
   const handleCompletePurchase = (order: Order) => {
-    // Record purchases before clearing
     const checkedItems = getCheckedItems();
     checkedItems.forEach(item => {
       recordPurchase(item);
     });
-    
     if (checkedItems.length > 0) {
       toast.success(`Order #${order.id.slice(0, 8).toUpperCase()} confirmed! ${checkedItems.length} items added to inventory.`);
     }
-    
     clearChecked();
     setShowCheckout(false);
   };
@@ -195,9 +200,10 @@ const Index = () => {
         isOnline={isOnline}
         onUserClick={() => setShowProfile(true)}
         onNotificationClick={() => setShowNotifications(true)}
+        onAddItem={handleAddFromHeader}
+        onSearch={handleHeaderSearch}
       />
 
-      {/* Notifications Panel */}
       <NotificationsPanel
         open={showNotifications}
         onOpenChange={setShowNotifications}
@@ -205,7 +211,6 @@ const Index = () => {
         lowStockAlerts={lowStockAlerts}
       />
       
-      {/* User Profile Sheet */}
       <Sheet open={showProfile} onOpenChange={setShowProfile}>
         <SheetContent className="w-full sm:max-w-md overflow-y-auto">
           <div className="py-4 space-y-6">
@@ -220,7 +225,6 @@ const Index = () => {
       </Sheet>
       
       <main className="container py-6 space-y-6">
-        {/* Offline Banner */}
         {!isOnline && (
           <div className="p-3 rounded-lg bg-warning/10 border border-warning/20 text-warning text-sm text-center">
             📴 You're offline. Your data is saved locally and will sync when you're back online.
@@ -237,7 +241,7 @@ const Index = () => {
               {user ? (
                 <div className="flex items-center gap-2">
                   <span className="text-sm opacity-80 hidden sm:inline">
-                    {user.email}
+                    {user.user_metadata?.full_name || user.email}
                   </span>
                   <Button 
                     variant="secondary" 
@@ -280,18 +284,12 @@ const Index = () => {
           <div className="absolute right-20 bottom-0 w-32 h-32 bg-primary-foreground/10 rounded-full blur-2xl -mb-10" />
         </section>
 
-        {/* Stats Overview */}
         <StatsCards stats={stats} />
-
-        {/* Quick Add Products */}
         <QuickAddProduct products={[]} onAdd={addItem} />
-
-        {/* Online Store Products - Centered */}
         <OnlineProducts onAddItem={handleAddSuggestion} />
 
         {/* Main Content Grid */}
         <div className="grid lg:grid-cols-3 gap-6">
-          {/* Left Column - Main List */}
           <div className="lg:col-span-2 space-y-6">
             <AddItemForm 
               onAddItem={addItem} 
@@ -308,7 +306,6 @@ const Index = () => {
             />
           </div>
 
-          {/* Right Column - Sidebar */}
           <div className="space-y-6">
             <Tabs defaultValue="budget" className="w-full">
               <TabsList className="w-full grid grid-cols-3">
@@ -341,7 +338,6 @@ const Index = () => {
               </TabsContent>
             </Tabs>
             
-            {/* Active Order Tracking */}
             {activeOrder && (
               <OrderTrackingBadge 
                 order={activeOrder} 
@@ -349,7 +345,6 @@ const Index = () => {
               />
             )}
             
-            {/* Price Comparison - Above Smart Suggestions */}
             <PriceComparison />
             <SmartSuggestions onAddItem={handleAddSuggestion} aiSuggestions={aiSuggestions} />
             <AIAssistant groceryItems={items} onSuggestionsUpdate={handleAISuggestions} />
@@ -357,7 +352,6 @@ const Index = () => {
           </div>
         </div>
 
-        {/* Google Lens Scanner */}
         <GoogleLens 
           open={showLens} 
           onOpenChange={setShowLens}
@@ -371,7 +365,6 @@ const Index = () => {
           })}
         />
 
-        {/* Checkout Modal */}
         <CheckoutModal
           open={showCheckout}
           onOpenChange={setShowCheckout}
@@ -381,7 +374,6 @@ const Index = () => {
           budget={budget}
         />
 
-        {/* Order Tracking Dialog */}
         {activeOrder && (
           <Dialog open={showOrderTracking} onOpenChange={setShowOrderTracking}>
             <DialogContent className="sm:max-w-lg p-0">
@@ -394,7 +386,6 @@ const Index = () => {
         )}
       </main>
 
-      {/* Footer */}
       <footer className="border-t mt-12">
         <div className="container py-6 text-center text-sm text-muted-foreground">
           <p>Prime Mart — Your intelligent grocery companion 🥬</p>
